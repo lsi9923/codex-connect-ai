@@ -10,7 +10,7 @@
       "npm run build",
       "Invoke-WebRequest -UseBasicParsing -Uri http://127.0.0.1:5199/"
     ],
-    "evidence": "npm test and npm run build passed after the detail fix. Dev server returned HTTP 200. Chrome DevTools verified 24시간 업무 ON, connectAiLab.autoCycleEnabled, dailyBriefingTime 09:00, secretaryBridgeMode output_only, Auto-Git Sync approval state, lsi9923/connect-ai link, right sidebar limited to one profile/skill editor, nonblank Three.js canvas, active-agent movement after advanceTime(2400), manual-yaw facing payload, no console error/warn/issue, no unnamed fields, no native title popups, and no mobile horizontal overflow."
+    "evidence": "npm test and npm run build passed after the operator-control fix. Dev server returned HTTP 200. Chrome DevTools verified default 24시간 업무 대기, start button switching to 24시간 업무 실행 중, daily briefing time update to 10:30, secretary bridge update to full, Auto-Git Sync and Dynamic Model Detection toggles, lsi9923/connect-ai link, right sidebar limited to one profile/skill editor, nonblank Three.js canvas, active-agent movement after advanceTime(2400), manual-yaw facing payload, no console error/warn/issue, no unnamed fields, no native title popups, and no horizontal overflow."
   },
   "codeReview": {
     "recommendation": "APPROVE",
@@ -27,7 +27,11 @@
   },
   "connectAiDetailFix": {
     "status": "passed",
-    "evidence": "Implemented requested detail-only pass: 24시간 업무 ON restored, lsi9923/connect-ai source added, 3D office background improved with original map asset reference, agent profile images shown on desk terminals, right sidebar reduced to selected agent model/skill editing, and desktop/mobile order verified as office -> ops -> editor -> reports/reference."
+    "evidence": "Implemented requested detail-only pass, then corrected the 24시간 state to be operator-controlled instead of forced ON. Default state is 사용자 결정 대기; controls now let the user start/stop the autonomous cycle, edit briefing time, choose secretary bridge mode, toggle Auto-Git Sync approval queue, and toggle Dynamic Model Detection. 3D office payload reads the live operator settings."
+  },
+  "operatorControlFix": {
+    "status": "passed",
+    "evidence": "Replaced fixed 24시간 업무 ON display with a control console. Browser smoke confirmed beforePayloadEnabled=false, clicking 24시간 시작 changes UI to 실행 중 and payload enabled=true, and subsequent setting changes appear in render_game_to_text autoCycle payload. Screenshot saved to D:\\connect-ai-office-upgrade-work\\connect-ai-ops-control-running.png."
   },
   "ultragoalCheckpoint": {
     "status": "not_checkpointed",

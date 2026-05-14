@@ -13,6 +13,14 @@ type AgentSceneItem = {
   facingYaw: number;
 };
 
+type OfficeStageOpsSettings = {
+  autoCycleEnabled: boolean;
+  dailyBriefingTime: string;
+  secretaryBridgeMode: string;
+  autoGitSyncApproval: boolean;
+  dynamicModelDetection: boolean;
+};
+
 declare global {
   interface Window {
     render_game_to_text?: () => string;
@@ -255,7 +263,7 @@ function setupScene(container: HTMLDivElement) {
     scene.add(officeWindow);
   });
 
-  const signTexture = makeLabelTexture('24H OPS ON', '#86efac');
+  const signTexture = makeLabelTexture('24H OPS CTRL', '#86efac');
   const opsSign = new THREE.Sprite(new THREE.SpriteMaterial({ map: signTexture, transparent: true, opacity: 0.94 }));
   opsSign.scale.set(2.1, 0.78, 1);
   opsSign.position.set(0, 3.3, -6.28);
@@ -323,21 +331,25 @@ export function OfficeStage3D({
   plan,
   activeAgent,
   selectAgent,
+  opsSettings,
 }: {
   plan: OfficePlan;
   activeAgent: AgentId;
   selectAgent: (id: AgentId) => void;
+  opsSettings: OfficeStageOpsSettings;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const planRef = useRef(plan);
   const activeAgentRef = useRef(activeAgent);
   const selectAgentRef = useRef(selectAgent);
+  const opsSettingsRef = useRef(opsSettings);
 
   useEffect(() => {
     planRef.current = plan;
     activeAgentRef.current = activeAgent;
     selectAgentRef.current = selectAgent;
-  }, [activeAgent, plan, selectAgent]);
+    opsSettingsRef.current = opsSettings;
+  }, [activeAgent, opsSettings, plan, selectAgent]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -468,6 +480,7 @@ export function OfficeStage3D({
     const renderGameToText = () => {
       const route = computeRoute(simTime);
       const activeItem = agents.get(route.agentId);
+      const currentOps = opsSettingsRef.current;
       const payload = {
         mode: 'three-office-lego-stage',
         coordinateSystem: 'x left/right, z depth, y height',
@@ -489,12 +502,13 @@ export function OfficeStage3D({
         runId: planRef.current.runId,
         taskCount: planRef.current.tasks.length,
         autoCycle: {
-          enabled: true,
-          label: '24시간 업무 ON',
+          enabled: currentOps.autoCycleEnabled,
+          label: currentOps.autoCycleEnabled ? '24시간 업무 실행 중' : '24시간 업무 대기',
           setting: 'connectAiLab.autoCycleEnabled',
-          dailyBriefingTime: '09:00',
-          secretaryBridgeMode: 'output_only',
-          autoGitSync: 'approval-gated',
+          dailyBriefingTime: currentOps.dailyBriefingTime,
+          secretaryBridgeMode: currentOps.secretaryBridgeMode,
+          autoGitSync: currentOps.autoGitSyncApproval ? 'approval-gated' : 'manual-off',
+          dynamicModelDetection: currentOps.dynamicModelDetection,
         },
         hermesSystems: ['memory', 'skill-forge', 'gateway', 'scheduler'],
         sourceRepos: ['https://github.com/lsi9923/connect-ai', 'https://github.com/fathah/hermes-desktop'],

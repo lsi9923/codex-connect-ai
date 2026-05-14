@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import {
   BadgeCheck,
   Brain,
@@ -105,53 +106,91 @@ const approvalChoices: { label: ApprovalStatus; short: string }[] = [
   { label: '거절됨', short: '거절' },
 ];
 
+type SecretaryBridgeMode = 'off' | 'output_only' | 'full';
+
+type ConnectAiOpsSettings = {
+  autoCycleEnabled: boolean;
+  dailyBriefingTime: string;
+  secretaryBridgeMode: SecretaryBridgeMode;
+  autoGitSyncApproval: boolean;
+  dynamicModelDetection: boolean;
+};
+
 const hermesSlashCommands = ['/memory', '/skills', '/tools', '/status', '/usage', '/model', '/browse', '/code', '/schedule'];
 const hermesGateways = ['Telegram', 'Discord', 'Slack', 'Webhooks', 'Email', 'Home Assistant'];
 const hermesLoopLabels = ['업무 관찰', '장기 기억 저장', '스킬 개선 제안', '예약 실행 대기'];
-const connectAiOpsSignals = [
-  {
-    label: '24시간 업무 ON',
-    setting: 'connectAiLab.autoCycleEnabled',
-    value: '24시간 자율 사이클 ON',
-    detail: '30분 이상 자리를 비우면 CEO가 다음 업무 루프를 자동 배정',
-    tone: 'live',
-  },
-  {
-    label: '데일리 브리핑',
-    setting: 'connectAiLab.dailyBriefingTime',
-    value: '09:00',
-    detail: '매일 오전 업무 요약과 다음 실행 후보를 Secretary가 정리',
-    tone: 'briefing',
-  },
-  {
-    label: '비서 브릿지',
-    setting: 'connectAiLab.secretaryBridgeMode',
-    value: 'output_only',
-    detail: 'Telegram 전송 전 보고서만 출력하고 승인을 기다리는 모드',
-    tone: 'bridge',
-  },
-  {
-    label: 'Auto-Git Sync',
-    setting: 'P-Reinforce Auto-Git Sync',
-    value: '승인 대기',
-    detail: 'Developer 산출물은 승인 뒤 커밋/동기화되는 흐름으로 표시',
-    tone: 'approval',
-  },
-  {
-    label: 'Dynamic Model Detection',
-    setting: 'Connect AI model probe',
-    value: '모델 선택 가능',
-    detail: 'Ollama, LM Studio, OpenRouter, OpenAI 계열 모델 라우팅 UI 유지',
-    tone: 'model',
-  },
-];
+const defaultConnectAiOpsSettings: ConnectAiOpsSettings = {
+  autoCycleEnabled: false,
+  dailyBriefingTime: '09:00',
+  secretaryBridgeMode: 'output_only',
+  autoGitSyncApproval: true,
+  dynamicModelDetection: true,
+};
 const connectAiSourceBadges = ['P-Reinforce', 'Agent University', 'Auto-Git Sync', 'Dynamic Model Detection'];
+
+function connectAiOpsSignals(settings: ConnectAiOpsSettings) {
+  return [
+    {
+      label: '24시간 업무',
+      setting: 'connectAiLab.autoCycleEnabled',
+      value: settings.autoCycleEnabled ? '사용자가 켠 상태' : '사용자 결정 대기',
+      detail: settings.autoCycleEnabled
+        ? '30분 이상 자리를 비우면 CEO가 다음 업무 루프를 자동 배정'
+        : '운영자가 시작을 누르기 전에는 자동 순환하지 않습니다',
+      tone: settings.autoCycleEnabled ? 'live' : 'standby',
+    },
+    {
+      label: '데일리 브리핑',
+      setting: 'connectAiLab.dailyBriefingTime',
+      value: settings.dailyBriefingTime,
+      detail: '매일 설정한 시간에 업무 요약과 다음 실행 후보를 Secretary가 정리',
+      tone: 'briefing',
+    },
+    {
+      label: '비서 브릿지',
+      setting: 'connectAiLab.secretaryBridgeMode',
+      value: settings.secretaryBridgeMode,
+      detail: settings.secretaryBridgeMode === 'off'
+        ? 'Telegram 보고 연동을 끄고 화면 안에서만 확인'
+        : settings.secretaryBridgeMode === 'full'
+          ? '승인된 보고를 실제 브릿지 실행 상태로 표시'
+          : 'Telegram 전송 전 보고서만 출력하고 승인을 기다리는 모드',
+      tone: 'bridge',
+    },
+    {
+      label: 'Auto-Git Sync',
+      setting: 'P-Reinforce Auto-Git Sync',
+      value: settings.autoGitSyncApproval ? '승인 대기' : '꺼짐',
+      detail: settings.autoGitSyncApproval
+        ? 'Developer 산출물은 승인 뒤 커밋/동기화되는 흐름으로 표시'
+        : 'Git 동기화는 수동 확인 전까지 큐에 올리지 않습니다',
+      tone: settings.autoGitSyncApproval ? 'approval' : 'standby',
+    },
+    {
+      label: 'Dynamic Model Detection',
+      setting: 'Connect AI model probe',
+      value: settings.dynamicModelDetection ? '모델 선택 가능' : '수동 모델 고정',
+      detail: 'Ollama, LM Studio, OpenRouter, OpenAI 계열 모델 라우팅 UI 유지',
+      tone: settings.dynamicModelDetection ? 'model' : 'standby',
+    },
+  ];
+}
 
 function modelLabel(modelId: string) {
   return modelOptions.find((item) => item.id === modelId)?.label || modelId.split('/').pop() || modelId;
 }
 
-function Office({ activeAgent, plan, selectAgent }: { activeAgent: AgentId; plan: OfficePlan; selectAgent: (id: AgentId) => void }) {
+function Office({
+  activeAgent,
+  plan,
+  selectAgent,
+  opsSettings,
+}: {
+  activeAgent: AgentId;
+  plan: OfficePlan;
+  selectAgent: (id: AgentId) => void;
+  opsSettings: ConnectAiOpsSettings;
+}) {
   const activeRoster = plan.activeAgents.length ? plan.activeAgents : SPECIALIST_IDS;
   const tasksByAgent = useMemo(() => new Map(plan.tasks.map((task) => [task.agent, task])), [plan.tasks]);
   const [engine, setEngine] = useState<{ agent: AgentId; phase: MotionPhase; cycle: number }>({
@@ -191,14 +230,16 @@ function Office({ activeAgent, plan, selectAgent }: { activeAgent: AgentId; plan
           <h2>AI 직원 회사 운영 화면 <span className="version-badge">Office Simulator v3</span></h2>
         </div>
         <div className="status-stack">
-          <div className="status-pill always-on"><Radio size={15} /> 24시간 업무 ON · connectAiLab.autoCycleEnabled</div>
+          <div className={`status-pill always-on ${opsSettings.autoCycleEnabled ? 'on' : 'standby'}`}>
+            <Radio size={15} /> {opsSettings.autoCycleEnabled ? '24시간 업무 실행 중' : '24시간 업무 대기'} · connectAiLab.autoCycleEnabled
+          </div>
           <div className="status-pill live"><Radio size={15} /> Game Engine ON · {currentAgent.name} {phaseLabels[engine.phase]}</div>
           <div className="mini-clock"><Clock size={14} /> Run #{plan.runId + 1} · 단계 {phaseIndex + 1}/4 · {plan.headline}</div>
         </div>
       </div>
 
       <div className="office-floor">
-        <OfficeStage3D plan={plan} activeAgent={activeAgent} selectAgent={selectAgent} />
+        <OfficeStage3D plan={plan} activeAgent={activeAgent} selectAgent={selectAgent} opsSettings={opsSettings} />
         <div className="office-room-shell">
           <div className="back-wall">
             <div className="window window-a"><span /></div>
@@ -507,11 +548,15 @@ function ConnectAiOpsPanel({
   skillSettings,
   activeAgent,
   selectAgent,
+  opsSettings,
+  setOpsSettings,
 }: {
   plan: OfficePlan;
   skillSettings: SkillSettings;
   activeAgent: AgentId;
   selectAgent: (id: AgentId) => void;
+  opsSettings: ConnectAiOpsSettings;
+  setOpsSettings: Dispatch<SetStateAction<ConnectAiOpsSettings>>;
 }) {
   const totalSkills = AGENT_ORDER.reduce((sum, id) => sum + (skillSettings[id] || AGENTS[id].suggestedSkills).length, 0);
   const runningCount = plan.tasks.filter((task) => task.status === 'running').length;
@@ -530,15 +575,32 @@ function ConnectAiOpsPanel({
     { id: 'build', label: '개발 자동화팀', agent: 'developer' as AgentId, provider: 'OpenRouter', status: 'running' },
     { id: 'telegram', label: '보고/승인팀', agent: 'secretary' as AgentId, provider: 'Ollama', status: approvalCount ? 'approval' : 'standby' },
   ];
+  const signals = connectAiOpsSignals(opsSettings);
+  const updateOps = <K extends keyof ConnectAiOpsSettings>(key: K, value: ConnectAiOpsSettings[K]) => {
+    setOpsSettings((prev) => ({ ...prev, [key]: value }));
+  };
 
   return (
     <section className="connect-ai-ops-panel hermes-desktop-panel glass">
       <div className="section-title">
         <Workflow size={18} />
-        <span>Connect AI 24시간 운영 레이어</span>
+        <span>Connect AI 운영 제어 레이어</span>
+      </div>
+      <div className="ops-control-console">
+        <button
+          type="button"
+          className={`ops-power ${opsSettings.autoCycleEnabled ? 'on' : 'off'}`}
+          onClick={() => updateOps('autoCycleEnabled', !opsSettings.autoCycleEnabled)}
+        >
+          <Radio size={16} /> {opsSettings.autoCycleEnabled ? '24시간 중지' : '24시간 시작'}
+        </button>
+        <div className="ops-live-runbook">
+          <strong>{opsSettings.autoCycleEnabled ? '자동 순환 중' : '자동 순환 대기'}</strong>
+          <span>브리핑 {opsSettings.dailyBriefingTime} · 브릿지 {opsSettings.secretaryBridgeMode} · Git {opsSettings.autoGitSyncApproval ? '승인 큐' : '수동'}</span>
+        </div>
       </div>
       <div className="ops-signal-strip">
-        {connectAiOpsSignals.map((signal) => (
+        {signals.map((signal) => (
           <div className={`ops-signal ${signal.tone}`} key={signal.setting}>
             <span>{signal.label}</span>
             <strong>{signal.value}</strong>
@@ -546,6 +608,61 @@ function ConnectAiOpsPanel({
             <small>{signal.detail}</small>
           </div>
         ))}
+      </div>
+      <div className="ops-control-grid" aria-label="Connect AI 운영 설정">
+        <label className="switch-field" htmlFor="ops-auto-cycle">
+          <input
+            id="ops-auto-cycle"
+            name="ops-auto-cycle"
+            type="checkbox"
+            checked={opsSettings.autoCycleEnabled}
+            onChange={(event) => updateOps('autoCycleEnabled', event.target.checked)}
+          />
+          <span>24시간 자율 사이클 사용</span>
+        </label>
+        <label className="ops-field" htmlFor="ops-daily-briefing-time">
+          <span>데일리 브리핑 시간</span>
+          <input
+            id="ops-daily-briefing-time"
+            name="ops-daily-briefing-time"
+            type="time"
+            value={opsSettings.dailyBriefingTime}
+            onChange={(event) => updateOps('dailyBriefingTime', event.target.value)}
+          />
+        </label>
+        <label className="ops-field" htmlFor="ops-secretary-bridge-mode">
+          <span>비서 브릿지 모드</span>
+          <select
+            id="ops-secretary-bridge-mode"
+            name="ops-secretary-bridge-mode"
+            value={opsSettings.secretaryBridgeMode}
+            onChange={(event) => updateOps('secretaryBridgeMode', event.target.value as SecretaryBridgeMode)}
+          >
+            <option value="off">off · 화면에서만 확인</option>
+            <option value="output_only">output_only · 보고서만 출력</option>
+            <option value="full">full · 승인 후 실행 표시</option>
+          </select>
+        </label>
+        <label className="switch-field" htmlFor="ops-auto-git-sync">
+          <input
+            id="ops-auto-git-sync"
+            name="ops-auto-git-sync"
+            type="checkbox"
+            checked={opsSettings.autoGitSyncApproval}
+            onChange={(event) => updateOps('autoGitSyncApproval', event.target.checked)}
+          />
+          <span>Auto-Git Sync 승인 큐 사용</span>
+        </label>
+        <label className="switch-field" htmlFor="ops-dynamic-model-detection">
+          <input
+            id="ops-dynamic-model-detection"
+            name="ops-dynamic-model-detection"
+            type="checkbox"
+            checked={opsSettings.dynamicModelDetection}
+            onChange={(event) => updateOps('dynamicModelDetection', event.target.checked)}
+          />
+          <span>Dynamic Model Detection 표시</span>
+        </label>
       </div>
       <div className="source-badges">
         <span><Database size={14} /> lsi9923/connect-ai 원본 신호 반영</span>
@@ -776,6 +893,7 @@ export default function App() {
   const [seed, setSeed] = useState(0);
   const [modelSettings, setModelSettings] = useState<ModelSettings>(defaultModelSettings);
   const [skillSettings, setSkillSettings] = useState<SkillSettings>(() => buildDefaultSkillSettings());
+  const [opsSettings, setOpsSettings] = useState<ConnectAiOpsSettings>(defaultConnectAiOpsSettings);
   const [approvalDecisions, setApprovalDecisions] = useState<Record<string, ApprovalStatus>>({});
   const plan = useMemo(() => makePlan(prompt, seed, modelSettings, skillSettings), [modelSettings, prompt, seed, skillSettings]);
   const selected = AGENTS[activeAgent];
@@ -824,18 +942,27 @@ export default function App() {
           <p>CEO가 명령하면 AI 직원들이 자리에서 일하고, CEO 방으로 이동해 보고하고, Telegram 승인을 기다리는 1인 기업 운영 화면입니다.</p>
         </div>
         <div className="hero-actions">
-          <span className="hero-live"><Radio size={16} /> 24시간 업무 ON</span>
-          <span><Clock size={16} /> 데일리 브리핑 09:00</span>
-          <span><GitBranch size={16} /> Auto-Git Sync 승인 대기</span>
+          <span className={opsSettings.autoCycleEnabled ? 'hero-live' : 'hero-standby'}>
+            <Radio size={16} /> {opsSettings.autoCycleEnabled ? '24시간 업무 실행 중' : '24시간 업무 대기'}
+          </span>
+          <span><Clock size={16} /> 데일리 브리핑 {opsSettings.dailyBriefingTime}</span>
+          <span><GitBranch size={16} /> Auto-Git Sync {opsSettings.autoGitSyncApproval ? '승인 대기' : '꺼짐'}</span>
           <span><Settings2 size={16} /> 직원별 모델·스킬 선택</span>
         </div>
       </header>
 
       <main className="layout">
         <div className="left-col">
-          <Office activeAgent={activeAgent} plan={plan} selectAgent={setActiveAgent} />
+          <Office activeAgent={activeAgent} plan={plan} selectAgent={setActiveAgent} opsSettings={opsSettings} />
           <CommandCenter prompt={prompt} plan={plan} setPrompt={setPrompt} runPlan={runPlan} applyRecommendedToAll={applyRecommendedToAll} />
-          <ConnectAiOpsPanel plan={plan} skillSettings={skillSettings} activeAgent={activeAgent} selectAgent={setActiveAgent} />
+          <ConnectAiOpsPanel
+            plan={plan}
+            skillSettings={skillSettings}
+            activeAgent={activeAgent}
+            selectAgent={setActiveAgent}
+            opsSettings={opsSettings}
+            setOpsSettings={setOpsSettings}
+          />
         </div>
         <div className="right-col agent-inspector">
           <ProfilePanel
