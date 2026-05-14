@@ -26,6 +26,8 @@ const HERMES_CALL_TIMEOUT_MS = Number(process.env.CONNECT_AI_HERMES_TIMEOUT_MS |
 const WIKI_VAULT_PATH = process.env.CONNECT_AI_WIKI_VAULT
   || path.join(os.homedir(), 'Desktop', '커서 ai 폴더', '옵시디언 뇌', '위키에이전트');
 const WIKI_GIT_REMOTE_URL = 'https://github.com/lsi9923/llm-wiki-opcidian.git';
+const WIKI_GUIDE_FILE = path.join(HERMES_ROOT, 'webui', 'workspace', '올인원_요청_가이드.md');
+const WIKI_DRAFT_ROOT = path.join(RUNTIME_ROOT, 'wiki-drafts');
 const HERMES_CODEX_MODELS = [
   'gpt-5.5',
   'gpt-5.4',
@@ -690,6 +692,127 @@ function writeJsonArtifact(filePath, payload) {
   fs.writeFileSync(filePath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
 }
 
+function todayIsoDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function safeNoteName(value) {
+  return String(value || 'connect-ai-run')
+    .replace(/[\\/:*?"<>|]/g, ' ')
+    .replace(/\s+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 90) || 'connect-ai-run';
+}
+
+function redactSecrets(value) {
+  return String(value || '')
+    .replace(/(sk-[A-Za-z0-9_-]{12,})/g, '[REDACTED_OPENAI_KEY]')
+    .replace(/(gh[pousr]_[A-Za-z0-9_]{20,})/g, '[REDACTED_GITHUB_TOKEN]')
+    .replace(/(\b\d{8,12}:[A-Za-z0-9_-]{20,}\b)/g, '[REDACTED_TELEGRAM_TOKEN]')
+    .replace(/((?:OPENAI|OPENROUTER|GITHUB|TELEGRAM|PAYPAL|YOUTUBE)[A-Z0-9_]*\s*=\s*)[^\s]+/gi, '$1[REDACTED]');
+}
+
+function appendUniqueLine(filePath, line) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  const current = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
+  if (current.includes(line)) return false;
+  const prefix = current && !current.endsWith('\n') ? '\n' : '';
+  fs.appendFileSync(filePath, `${prefix}${line}\n`, 'utf8');
+  return true;
+}
+
+function appendSection(filePath, heading, body) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  const current = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
+  const prefix = current && !current.endsWith('\n') ? '\n\n' : current ? '\n' : '';
+  fs.appendFileSync(filePath, `${prefix}${heading}\n\n${body.trim()}\n`, 'utf8');
+}
+
+function summarizeTasksForWiki(run) {
+  return (run.tasks || []).map((task) => {
+    const status = task.status === 'approval' ? '승인 대기' : task.status;
+    return `- [[${AGENT_NAMES[task.agent]}]] · ${task.title} · ${status} · ${task.executionModel || task.model}\n  - ${redactSecrets(task.output).replace(/\s+/g, ' ').slice(0, 240)}`;
+  }).join('\n');
+}
+
+function wikiArtifactsForRun(run) {
+  const date = todayIsoDate();
+  const title = `Connect AI Run ${run.runNumber} LLM Wiki`;
+  const noteName = safeNoteName(title);
+  const rawRel = path.join('00_Raw', date, `connect_ai_run_${run.runNumber}_${run.id}.md`);
+  const wikiRel = path.join('10_Wiki', '💡 Topics', 'AI_Knowledge_Base', `${noteName}.md`);
+  const postingRel = path.join('30_Output', date, `connect_ai_run_${run.runNumber}_posting_brief.md`);
+  const telegramRel = path.join('30_Output', date, `connect_ai_run_${run.runNumber}_telegram_handoff.md`);
+  return {
+    date,
+    title,
+    noteName,
+    rawRel,
+    wikiRel,
+    indexRel: path.join('20_Meta', 'Index.md'),
+    graphRel: path.join('20_Meta', 'Graph.md'),
+    logRel: path.join('20_Meta', 'Log.md'),
+    postingRel,
+    telegramRel,
+  };
+}
+
+function buildWikiDraft(run) {
+  const files = wikiArtifactsForRun(run);
+  const completed = (run.tasks || []).filter((task) => task.status === 'done' || task.status === 'approval');
+  const links = ['[[Connect AI]]', '[[P-Reinforce]]', '[[LLM-Wiki]]', '[[Hermes Agent]]', '[[Obsidian]]', '[[Telegram handoff]]'];
+  const preview = [
+    '# Obsidian LLM-Wiki 저장 초안',
+    '',
+    '> [!warning] 승인 전에는 vault에 저장하지 않습니다.',
+    `> 기준 문서: ${WIKI_GUIDE_FILE}`,
+    '',
+    '## 원문 요약',
+    `- CEO 입력: ${redactSecrets(run.prompt)}`,
+    `- 실행 run: ${run.runNumber}`,
+    `- 완료 직원: ${completed.length}/${(run.tasks || []).length}`,
+    '',
+    '## 분류 후보',
+    '- 10_Wiki/💡 Topics/AI_Knowledge_Base',
+    '- 주제: Connect AI 운영, P-Reinforce, Hermes Codex, 직원 작업 산출물',
+    '',
+    '## 새 노트/업데이트 후보',
+    `- Raw 보존: ${files.rawRel}`,
+    `- Wiki 노트: ${files.wikiRel}`,
+    `- Index 업데이트: ${files.indexRel}`,
+    `- Graph 업데이트: ${files.graphRel}`,
+    `- Log 업데이트: ${files.logRel}`,
+    `- Posting brief: ${files.postingRel}`,
+    `- Telegram handoff: ${files.telegramRel}`,
+    '',
+    '## Wikilink 후보',
+    links.join(' · '),
+    '',
+    '## 20_Meta 변경안',
+    `- Index.md에 [[${files.noteName}]] 링크 추가`,
+    `- Graph.md에 [[Connect AI]] -> [[${files.noteName}]] 연결 추가`,
+    `- Log.md에 ${files.date} 저장 로그 append`,
+    '',
+    '## 직원 산출물 요약',
+    summarizeTasksForWiki(run),
+    '',
+    '## Posting brief 초안',
+    `Connect AI run ${run.runNumber}에서 ${completed.length}개 직원 산출물을 LLM-Wiki 지식으로 정리합니다. 핵심 연결은 ${links.join(', ')} 입니다.`,
+    '',
+    '## Telegram handoff 초안',
+    `Connect AI run ${run.runNumber} Obsidian 저장 승인 대기. 승인 시 Raw/Wiki/Meta/posting/handoff 파일을 생성하고, GitHub push는 별도 승인 카드에서 처리합니다.`,
+    '',
+  ].join('\n');
+  return { ...files, links, preview };
+}
+
+function writeWikiDraftFile(run, draft) {
+  fs.mkdirSync(WIKI_DRAFT_ROOT, { recursive: true });
+  const draftFile = path.join(WIKI_DRAFT_ROOT, `${run.id}.md`);
+  fs.writeFileSync(draftFile, draft.preview, 'utf8');
+  return draftFile;
+}
+
 function writeRuntimeProposals(run, task, state) {
   if (state !== 'completed') return;
   const base = `${run.id}-${task.agent}`;
@@ -735,7 +858,173 @@ async function processRun(runId) {
     if (!task || task.status !== 'queued') continue;
     await processTask(runId, task.id);
   }
-  await queueWikiGitApproval(runId);
+  await queueWikiSaveApproval(runId);
+}
+
+async function queueWikiSaveApproval(runId) {
+  const run = getRunById(runId);
+  if (!run) return;
+  const completed = (run.tasks || []).filter((task) => task.status === 'done' || task.status === 'approval');
+  if (!completed.length) {
+    run.reports.push(reportLine('developer', 'approval', 'Obsidian LLM-Wiki 초안 생략 · 완료 산출물 없음'));
+    run.updatedAt = new Date().toISOString();
+    saveRun(run);
+    return;
+  }
+  const draft = buildWikiDraft(run);
+  const draftFile = writeWikiDraftFile(run, draft);
+  run.wikiDraft = { ...draft, draftFile, status: 'draft' };
+
+  const approvalId = `wiki-save-${run.id}`;
+  if (!run.approvals.some((item) => item.id === approvalId)) {
+    run.approvals.push({
+      id: approvalId,
+      agent: 'developer',
+      title: 'Obsidian LLM-Wiki 저장',
+      risk: '승인하면 00_Raw, 10_Wiki, 20_Meta, posting brief, Telegram handoff를 실제 vault에 씁니다.',
+      command: `write ${draft.rawRel} + ${draft.wikiRel} + 20_Meta/Index.md/Graph.md/Log.md`,
+      status: '승인 대기',
+      preview: draft.preview,
+    });
+    run.reports.push(reportLine('developer', 'approval', `Obsidian LLM-Wiki 저장 초안 생성 · ${draftFile}`));
+  }
+  run.updatedAt = new Date().toISOString();
+  saveRun(run);
+}
+
+function saveWikiDraftToVault(run) {
+  const draft = run.wikiDraft?.preview ? run.wikiDraft : buildWikiDraft(run);
+  if (!fs.existsSync(WIKI_VAULT_PATH)) throw new Error(`Obsidian vault not found: ${WIKI_VAULT_PATH}`);
+
+  const rawPath = path.join(WIKI_VAULT_PATH, draft.rawRel);
+  const wikiPath = path.join(WIKI_VAULT_PATH, draft.wikiRel);
+  const indexPath = path.join(WIKI_VAULT_PATH, draft.indexRel);
+  const graphPath = path.join(WIKI_VAULT_PATH, draft.graphRel);
+  const logPath = path.join(WIKI_VAULT_PATH, draft.logRel);
+  const postingPath = path.join(WIKI_VAULT_PATH, draft.postingRel);
+  const telegramPath = path.join(WIKI_VAULT_PATH, draft.telegramRel);
+
+  const created = new Date().toISOString();
+  const taskSummary = summarizeTasksForWiki(run);
+  const rawBody = [
+    '---',
+    `title: Raw Connect AI Run ${run.runNumber}`,
+    `date: ${draft.date}`,
+    'tags:',
+    '  - raw/connect-ai',
+    '  - p-reinforce',
+    '---',
+    '',
+    `# Raw Connect AI Run ${run.runNumber}`,
+    '',
+    '## Original CEO Input',
+    redactSecrets(run.prompt),
+    '',
+    '## Runtime Output Directory',
+    run.outputDir,
+    '',
+    '## Agent Outputs',
+    taskSummary,
+    '',
+  ].join('\n');
+
+  const wikiBody = [
+    '---',
+    `title: ${draft.title}`,
+    `date: ${draft.date}`,
+    'tags:',
+    '  - connect-ai',
+    '  - p-reinforce',
+    '  - llm-wiki',
+    'aliases:',
+    `  - Connect AI Run ${run.runNumber}`,
+    '---',
+    '',
+    `# ${draft.title}`,
+    '',
+    '> [!summary]',
+    `> [[Connect AI]] 작업 run ${run.runNumber}의 직원 산출물을 [[LLM-Wiki]] 방식으로 정리한 노트입니다.`,
+    '',
+    '## 연결',
+    draft.links.join(' · '),
+    '',
+    '## 입력 목표',
+    redactSecrets(run.prompt),
+    '',
+    '## 직원별 산출물',
+    taskSummary,
+    '',
+    '## 다음 액션',
+    '- [[Telegram handoff]] 승인 여부 확인',
+    '- 반복 가능한 절차는 [[P-Reinforce]] 스킬 후보로 검토',
+    '- GitHub 저장은 별도 승인 카드에서 실행',
+    '',
+  ].join('\n');
+
+  const postingBody = [
+    '---',
+    `title: Posting Brief Connect AI Run ${run.runNumber}`,
+    `date: ${draft.date}`,
+    'tags:',
+    '  - output/posting-brief',
+    '  - connect-ai',
+    '---',
+    '',
+    `# Posting Brief · Connect AI Run ${run.runNumber}`,
+    '',
+    `- Source note: [[${draft.noteName}]]`,
+    `- Summary: Connect AI run ${run.runNumber}에서 ${(run.tasks || []).length}명 직원 산출물을 장기 지식으로 정리했습니다.`,
+    '- Reuse angle: AI 직원 회사 운영, Hermes Codex, Obsidian LLM-Wiki 누적',
+    '',
+  ].join('\n');
+
+  const telegramBody = [
+    '---',
+    `title: Telegram Handoff Connect AI Run ${run.runNumber}`,
+    `date: ${draft.date}`,
+    'tags:',
+    '  - output/telegram-handoff',
+    '  - connect-ai',
+    '---',
+    '',
+    `# Telegram Handoff · Connect AI Run ${run.runNumber}`,
+    '',
+    `[[${draft.noteName}]] 저장 완료 후보입니다.`,
+    '',
+    '- 저장 위치: 위키에이전트 Obsidian vault',
+    '- Raw/Wiki/Meta/posting/handoff 파일 생성',
+    '- GitHub push는 별도 승인 필요',
+    '',
+  ].join('\n');
+
+  fs.mkdirSync(path.dirname(rawPath), { recursive: true });
+  fs.mkdirSync(path.dirname(wikiPath), { recursive: true });
+  fs.mkdirSync(path.dirname(postingPath), { recursive: true });
+  fs.mkdirSync(path.dirname(telegramPath), { recursive: true });
+
+  fs.writeFileSync(rawPath, rawBody, 'utf8');
+  fs.writeFileSync(wikiPath, wikiBody, 'utf8');
+  fs.writeFileSync(postingPath, postingBody, 'utf8');
+  fs.writeFileSync(telegramPath, telegramBody, 'utf8');
+
+  appendUniqueLine(indexPath, `- [[${draft.noteName}]] · Connect AI run ${run.runNumber} · ${draft.date}`);
+  appendUniqueLine(graphPath, `- [[Connect AI]] -> [[${draft.noteName}]] -> [[P-Reinforce]] -> [[LLM-Wiki]]`);
+  appendSection(logPath, `## ${created} · Connect AI run ${run.runNumber}`, [
+    `- Raw: ${draft.rawRel}`,
+    `- Wiki: [[${draft.noteName}]]`,
+    `- Posting brief: ${draft.postingRel}`,
+    `- Telegram handoff: ${draft.telegramRel}`,
+    '- GitHub push: 별도 승인 필요',
+  ].join('\n'));
+
+  run.wikiDraft = {
+    ...draft,
+    status: 'saved',
+    savedAt: created,
+    files: [rawPath, wikiPath, indexPath, graphPath, logPath, postingPath, telegramPath],
+  };
+
+  return run.wikiDraft;
 }
 
 async function queueWikiGitApproval(runId) {
@@ -1094,6 +1383,21 @@ async function approveItem(approvalId) {
     approval.status = result.ok ? '전송됨' : '실패';
     approval.result = result;
     run.reports.push(reportLine('secretary', 'telegram', result.ok ? `Telegram 실제 전송 완료 · message_id ${result.messageId}` : 'Telegram 전송 실패'));
+  } else if (approvalId.startsWith('wiki-save-')) {
+    const result = saveWikiDraftToVault(run);
+    approval.status = '이번 세션 승인';
+    approval.result = {
+      ok: true,
+      savedAt: result.savedAt,
+      files: result.files,
+    };
+    run.reports.push(reportLine('developer', 'approval', `Obsidian LLM-Wiki 저장 완료 · ${result.files.length}개 파일 반영`));
+    run.updatedAt = new Date().toISOString();
+    saveRun(run);
+    await queueWikiGitApproval(run.id);
+    const latest = getRunById(run.id) || run;
+    const latestApproval = latest.approvals.find((item) => item.id === approvalId) || approval;
+    return { run: latest, plan: officePlanFromRun(latest), approval: latestApproval };
   } else if (approvalId.startsWith('wiki-github-')) {
     const result = await commitAndPushWikiVault(run);
     approval.status = result.ok ? '전송됨' : '실패';

@@ -1323,6 +1323,7 @@ function ApprovalPanel({
             <strong>{AGENTS[item.agent].emoji} {item.title}</strong>
             <span>{item.risk}</span>
             <code>{item.command}</code>
+            {item.preview ? <pre className="approval-preview">{item.preview}</pre> : null}
             <em>{status}</em>
             <div className="approval-btns">
               {approvalChoices.map((choice) => (

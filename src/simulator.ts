@@ -39,6 +39,7 @@ export interface ApprovalItem {
   risk: string;
   command: string;
   status: ApprovalStatus;
+  preview?: string;
 }
 
 export interface PipelineStep {
