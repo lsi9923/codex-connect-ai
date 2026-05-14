@@ -87,9 +87,24 @@ export interface RuntimeStatus {
   gateways: Array<{ name: string; status: RuntimeConnectionState; detail: string }>;
   git: {
     status: RuntimeConnectionState;
+    path?: string;
     branch: string;
     dirtyCount: number;
     remote: string;
+    expectedRemote?: string;
+    targetMatched?: boolean;
+    changes?: string[];
+    message?: string;
+  };
+  wikiGit?: {
+    status: RuntimeConnectionState;
+    path: string;
+    branch: string;
+    dirtyCount: number;
+    remote: string;
+    expectedRemote: string;
+    targetMatched: boolean;
+    changes: string[];
     message?: string;
   };
 }

@@ -23,6 +23,9 @@ const HERMES_WEB_HEALTH_URL = 'http://127.0.0.1:8788/health';
 const HERMES_WEB_SETTINGS_URL = 'http://127.0.0.1:8788/api/settings';
 const MODEL_CALL_TIMEOUT_MS = Number(process.env.CONNECT_AI_MODEL_TIMEOUT_MS || 240000);
 const HERMES_CALL_TIMEOUT_MS = Number(process.env.CONNECT_AI_HERMES_TIMEOUT_MS || 600000);
+const WIKI_VAULT_PATH = process.env.CONNECT_AI_WIKI_VAULT
+  || path.join(os.homedir(), 'Desktop', '커서 ai 폴더', '옵시디언 뇌', '위키에이전트');
+const WIKI_GIT_REMOTE_URL = 'https://github.com/lsi9923/llm-wiki-opcidian.git';
 const HERMES_CODEX_MODELS = [
   'gpt-5.5',
   'gpt-5.4',
@@ -462,9 +465,9 @@ function countJsonEntries(dir) {
   }
 }
 
-function execGit(args, timeoutMs = 4000) {
+function execGit(args, timeoutMs = 4000, cwd = APP_ROOT) {
   return new Promise((resolve) => {
-    const child = spawn('git', args, { cwd: APP_ROOT, windowsHide: true });
+    const child = spawn('git', args, { cwd, windowsHide: true });
     let stdout = '';
     let stderr = '';
     const timeout = setTimeout(() => {
@@ -480,28 +483,48 @@ function execGit(args, timeoutMs = 4000) {
   });
 }
 
-async function getGitStatus() {
-  const status = await execGit(['status', '--short', '--branch']);
-  const remote = await execGit(['remote', '-v']);
+async function getGitStatus(cwd = APP_ROOT, expectedRemote = '') {
+  if (!fs.existsSync(cwd)) {
+    return {
+      status: 'missing',
+      path: cwd,
+      branch: 'missing',
+      dirtyCount: 0,
+      remote: '',
+      expectedRemote,
+      targetMatched: false,
+      changes: [],
+      message: 'Git working directory not found',
+    };
+  }
+  const status = await execGit(['status', '--short', '--branch'], 4000, cwd);
+  const remote = await execGit(['remote', '-v'], 4000, cwd);
   const lines = status.stdout ? status.stdout.split(/\r?\n/) : [];
   const branch = lines[0] || 'unknown';
-  const dirtyCount = lines.slice(1).filter(Boolean).length;
+  const changes = lines.slice(1).filter(Boolean);
+  const firstRemote = remote.stdout.split(/\r?\n/)[0] || '';
+  const targetMatched = expectedRemote ? remote.stdout.includes(expectedRemote) : true;
   return {
     status: status.ok ? 'connected' : 'error',
+    path: cwd,
     branch,
-    dirtyCount,
-    remote: remote.stdout.split(/\r?\n/)[0] || '',
+    dirtyCount: changes.length,
+    remote: firstRemote,
+    expectedRemote,
+    targetMatched,
+    changes: changes.slice(0, 12),
     message: status.stderr || '',
   };
 }
 
 async function runtimeStatus() {
   const env = readEnvFile();
-  const [models, telegram, localApis, git] = await Promise.all([
+  const [models, telegram, localApis, git, wikiGit] = await Promise.all([
     detectModels(env),
     getTelegramStatus(env),
     detectLocalApis(),
     getGitStatus(),
+    getGitStatus(WIKI_VAULT_PATH, WIKI_GIT_REMOTE_URL),
   ]);
   const memory = getMemoryStatus();
   const revenue = getRevenueStatus(env);
@@ -510,7 +533,11 @@ async function runtimeStatus() {
   const hermes = models.providers.find((provider) => provider.id === 'hermes');
   const gateways = [
     { name: 'Telegram', status: telegram.connected ? 'connected' : telegram.configured ? 'error' : 'missing', detail: telegram.connected ? `@${telegram.botUsername}` : telegram.targetName },
-    { name: 'GitHub', status: env.GITHUB_TOKEN ? 'configured' : 'missing', detail: git.branch },
+    {
+      name: 'GitHub',
+      status: wikiGit.status === 'connected' && wikiGit.targetMatched ? 'configured' : wikiGit.status,
+      detail: wikiGit.targetMatched ? `LLM Wiki · ${wikiGit.dirtyCount} changes` : 'remote 확인 필요',
+    },
     { name: 'Hermes Codex', status: hermes?.status || 'missing', detail: hermes?.defaultModel || 'gpt-5.5' },
     { name: 'OpenRouter', status: env.OPENROUTER_API_KEY ? 'configured' : 'missing', detail: 'OPENROUTER_API_KEY' },
     { name: 'LM Studio', status: lmStudio?.status || 'missing', detail: lmStudio?.endpoint || '127.0.0.1:1234' },
@@ -533,6 +560,7 @@ async function runtimeStatus() {
     },
     gateways,
     git,
+    wikiGit,
   };
 }
 
@@ -707,6 +735,45 @@ async function processRun(runId) {
     if (!task || task.status !== 'queued') continue;
     await processTask(runId, task.id);
   }
+  await queueWikiGitApproval(runId);
+}
+
+async function queueWikiGitApproval(runId) {
+  const run = getRunById(runId);
+  if (!run) return;
+  const wikiGit = await getGitStatus(WIKI_VAULT_PATH, WIKI_GIT_REMOTE_URL);
+  if (wikiGit.status !== 'connected') {
+    run.reports.push(reportLine('developer', 'approval', `Obsidian Git 상태 확인 실패 · ${wikiGit.message || wikiGit.branch}`));
+    run.updatedAt = new Date().toISOString();
+    saveRun(run);
+    return;
+  }
+  if (!wikiGit.targetMatched) {
+    run.reports.push(reportLine('developer', 'approval', `Obsidian GitHub remote 불일치 · ${wikiGit.remote || 'remote 없음'}`));
+    run.updatedAt = new Date().toISOString();
+    saveRun(run);
+    return;
+  }
+  if (!wikiGit.dirtyCount) {
+    run.reports.push(reportLine('developer', 'approval', 'Obsidian vault 변경 없음 · GitHub 저장 승인 카드 생략'));
+    run.updatedAt = new Date().toISOString();
+    saveRun(run);
+    return;
+  }
+  const approvalId = `wiki-github-${run.id}`;
+  if (!run.approvals.some((item) => item.id === approvalId)) {
+    run.approvals.push({
+      id: approvalId,
+      agent: 'developer',
+      title: 'Obsidian GitHub 저장',
+      risk: `${wikiGit.dirtyCount}개 vault 변경을 ${WIKI_GIT_REMOTE_URL} main에 commit/push합니다.`,
+      command: `git -C "${WIKI_VAULT_PATH}" add -A && git commit -m "Update LLM wiki from Connect AI run ${run.runNumber}" && git push origin main`,
+      status: '승인 대기',
+    });
+    run.reports.push(reportLine('developer', 'approval', `Obsidian GitHub 저장 승인 대기 · ${wikiGit.dirtyCount}개 변경`));
+  }
+  run.updatedAt = new Date().toISOString();
+  saveRun(run);
 }
 
 async function processTask(runId, taskId) {
@@ -978,6 +1045,35 @@ async function runOpenAI(task, prompt, model, token) {
   return { model: `openai/${model}`, text: extractChatText(payload) };
 }
 
+async function commitAndPushWikiVault(run) {
+  const before = await getGitStatus(WIKI_VAULT_PATH, WIKI_GIT_REMOTE_URL);
+  if (before.status !== 'connected') throw new Error(before.message || 'Obsidian vault git status failed');
+  if (!before.targetMatched) throw new Error(`Obsidian vault remote mismatch: ${before.remote || 'remote 없음'}`);
+  if (!before.dirtyCount) return { ok: true, skipped: true, message: '변경 없음', before };
+
+  const add = await execGit(['add', '-A'], 60000, WIKI_VAULT_PATH);
+  if (!add.ok) throw new Error(`git add 실패: ${add.stderr || add.stdout}`);
+
+  const message = `Update LLM wiki from Connect AI run ${run.runNumber}`;
+  const commit = await execGit(['commit', '-m', message], 120000, WIKI_VAULT_PATH);
+  const nothingToCommit = /nothing to commit|no changes added/i.test(`${commit.stdout}\n${commit.stderr}`);
+  if (!commit.ok && !nothingToCommit) throw new Error(`git commit 실패: ${commit.stderr || commit.stdout}`);
+
+  const push = await execGit(['push', 'origin', 'main'], 180000, WIKI_VAULT_PATH);
+  if (!push.ok) throw new Error(`git push 실패: ${push.stderr || push.stdout}`);
+
+  const after = await getGitStatus(WIKI_VAULT_PATH, WIKI_GIT_REMOTE_URL);
+  return {
+    ok: true,
+    skipped: false,
+    message,
+    before,
+    after,
+    commit: commit.stdout || commit.stderr,
+    push: push.stdout || push.stderr,
+  };
+}
+
 function extractChatText(payload) {
   const text = payload?.choices?.[0]?.message?.content || payload?.choices?.[0]?.text || '';
   if (!text.trim()) throw new Error('model returned empty content');
@@ -998,6 +1094,21 @@ async function approveItem(approvalId) {
     approval.status = result.ok ? '전송됨' : '실패';
     approval.result = result;
     run.reports.push(reportLine('secretary', 'telegram', result.ok ? `Telegram 실제 전송 완료 · message_id ${result.messageId}` : 'Telegram 전송 실패'));
+  } else if (approvalId.startsWith('wiki-github-')) {
+    const result = await commitAndPushWikiVault(run);
+    approval.status = result.ok ? '전송됨' : '실패';
+    approval.result = {
+      ok: result.ok,
+      skipped: result.skipped,
+      message: result.message,
+      beforeDirtyCount: result.before?.dirtyCount,
+      afterDirtyCount: result.after?.dirtyCount,
+    };
+    run.reports.push(reportLine(
+      'developer',
+      'approval',
+      result.skipped ? 'Obsidian GitHub 저장 생략 · 변경 없음' : `Obsidian GitHub push 완료 · ${WIKI_GIT_REMOTE_URL}`,
+    ));
   } else {
     approval.status = '이번 세션 승인';
     run.reports.push(reportLine(approval.agent, 'approval', `${approval.title} 승인 기록 완료`));
@@ -1026,6 +1137,12 @@ async function route(req, res) {
   if (req.method === 'GET' && url.pathname === '/api/gateways') {
     const status = await runtimeStatus();
     return json(res, status.gateways);
+  }
+  if (req.method === 'GET' && url.pathname === '/api/wiki-git/status') {
+    return json(res, await getGitStatus(WIKI_VAULT_PATH, WIKI_GIT_REMOTE_URL));
+  }
+  if (req.method === 'POST' && url.pathname === '/api/wiki-git/push') {
+    return json(res, await commitAndPushWikiVault(getCurrentRun() || { runNumber: 'manual' }));
   }
   if (req.method === 'GET' && url.pathname === '/api/connect-ai/config') {
     const env = readEnvFile();

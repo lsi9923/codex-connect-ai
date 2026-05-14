@@ -869,6 +869,7 @@ function ConnectAiOpsPanel({
   const lmStudio = runtimeStatus?.models.providers.find((provider) => provider.id === 'lmstudio');
   const revenueConnectors = runtimeStatus?.revenue.connectors || fallbackRevenueConnectors;
   const revenueReady = revenueConnectors.filter((connector) => connector.status === 'connected' || connector.status === 'configured').length;
+  const wikiGit = runtimeStatus?.wikiGit;
   const updateOps = <K extends keyof ConnectAiOpsSettings>(key: K, value: ConnectAiOpsSettings[K]) => {
     setOpsSettings((prev) => ({ ...prev, [key]: value }));
   };
@@ -979,6 +980,7 @@ function ConnectAiOpsPanel({
         <span><Brain size={14} /> Memory {runtimeStatus?.memory.status === 'connected' ? formatBytes(memoryBytes) : runtimeStatusLabel(runtimeStatus?.memory.status)}</span>
         <span><Layers3 size={14} /> Skills {totalSkills}개</span>
         <span><DollarSign size={14} /> 수익 API {revenueReady}/{revenueConnectors.length} · 실제 확인 {formatWon(runtimeStatus?.revenue.total || 0)}</span>
+        <span><GitBranch size={14} /> Wiki Git {runtimeStatusLabel(wikiGit?.status)} · {wikiGit?.dirtyCount ?? 0} changes</span>
         <span><Send size={14} /> Gateways {connectedGateways}/{gatewayRows.length} 실제 상태</span>
       </div>
 
@@ -1027,6 +1029,7 @@ function ConnectAiOpsPanel({
             <span><Clock size={13} /> 매일 {opsSettings.dailyBriefingTime} 보고서</span>
             <span><Clock size={13} /> 24시간 업무 {opsSettings.autoCycleEnabled ? '사용자 ON' : '사용자 대기'}</span>
             <span><Clock size={13} /> Telegram {runtimeStatus?.telegram.canSend ? '승인 후 실제 전송 가능' : '전송 대상 미연결'}</span>
+            <span><GitBranch size={13} /> Obsidian GitHub {wikiGit?.targetMatched ? 'llm-wiki-opcidian 연결' : 'remote 확인 필요'}</span>
           </div>
         </div>
       </div>
