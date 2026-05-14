@@ -37,7 +37,7 @@ button { color: inherit; }
 .status-pill.live { color: #bbf7d0; background: rgba(34,197,94,.14); border-color: rgba(134,239,172,.28); }
 .mini-clock { display: inline-flex; align-items: center; gap: 7px; color: #e0f2fe; background: rgba(2, 132, 199, .12); border: 1px solid rgba(125,211,252,.22); border-radius: 8px; padding: 7px 11px; font-size: 12px; }
 .office-floor { position: relative; height: 720px; overflow: hidden; border-radius: 8px; border: 1px solid rgba(148, 163, 184, .2); background: #0f172a; box-shadow: inset 0 0 90px rgba(2,6,23,.72); }
-.office-floor::before { content: ''; position: absolute; inset: 0; z-index: 0; background-image: linear-gradient(180deg, rgba(2,6,23,.42), rgba(2,6,23,.72)), url('/connect-ai/assets/map.jpeg'); background-size: cover; background-position: center; opacity: .24; filter: saturate(1.18) contrast(1.08); }
+.office-floor::before { content: ''; position: absolute; inset: 0; z-index: 0; background-image: linear-gradient(180deg, rgba(2,6,23,.36), rgba(2,6,23,.68)), url('/connect-ai/assets/office_design_2_ceo_room.gif'); background-size: contain; background-repeat: no-repeat; background-position: center; opacity: .28; filter: saturate(1.08) contrast(1.04); }
 .office-floor::after { content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none; background: radial-gradient(circle at 50% 52%, transparent 0 34%, rgba(2,6,23,.18) 58%, rgba(2,6,23,.46) 100%), linear-gradient(90deg, rgba(34,197,94,.06), transparent 34%, rgba(244,114,182,.05)); }
 .office-floor.sang-enabled > :not(.sang-sim-cover) { visibility: hidden; }
 .office-floor.sang-enabled .sang-sim-cover,
@@ -577,14 +577,23 @@ select:focus, textarea:focus { border-color: rgba(125,211,252,.58); box-shadow: 
   border-radius: 8px;
   background: #050810;
   box-shadow: 0 0 30px rgba(0,255,65,.04), inset 0 0 30px rgba(0,0,0,.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
 }
 .sang-stage {
   position: relative;
-  width: 100%;
-  height: 100%;
+  flex: 0 0 auto;
+  width: min(100%, 580px);
+  height: auto;
+  max-width: 100%;
+  aspect-ratio: 512 / 544;
   overflow: hidden;
   background: #050810;
   isolation: isolate;
+  border: 1px solid rgba(148,163,184,.16);
+  box-shadow: 0 0 34px rgba(0,0,0,.58);
 }
 .sang-office-map {
   position: absolute;
@@ -592,11 +601,11 @@ select:focus, textarea:focus { border-color: rgba(125,211,252,.58); box-shadow: 
   z-index: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  object-position: 50% 44%;
+  object-fit: contain;
+  object-position: center;
   image-rendering: pixelated;
-  opacity: .9;
-  filter: saturate(1.08) contrast(1.05) brightness(.74);
+  opacity: 1;
+  filter: saturate(1.04) contrast(1.03) brightness(.8);
   user-select: none;
 }
 .sang-map-tint {
@@ -605,15 +614,15 @@ select:focus, textarea:focus { border-color: rgba(125,211,252,.58); box-shadow: 
   z-index: 1;
   pointer-events: none;
   background:
-    linear-gradient(180deg, rgba(5,8,16,.08), rgba(5,8,16,.28) 64%, rgba(5,8,16,.48)),
-    radial-gradient(ellipse at 48% 52%, rgba(34,211,238,.18), transparent 38%);
+    linear-gradient(180deg, rgba(5,8,16,.05), rgba(5,8,16,.16) 64%, rgba(5,8,16,.3)),
+    radial-gradient(ellipse at 53% 81%, rgba(34,211,238,.14), transparent 28%);
 }
 .sang-grid {
   position: absolute;
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  opacity: .48;
+  opacity: .22;
   background-image:
     linear-gradient(rgba(0,255,65,.024) 1px, transparent 1px),
     linear-gradient(90deg, rgba(0,255,65,.024) 1px, transparent 1px);
@@ -625,14 +634,14 @@ select:focus, textarea:focus { border-color: rgba(125,211,252,.58); box-shadow: 
   z-index: 2;
   pointer-events: none;
   background:
-    radial-gradient(ellipse at 50% 45%, transparent 36%, rgba(0,0,0,.58) 100%),
-    linear-gradient(90deg, rgba(5,8,16,.28), transparent 16%, transparent 84%, rgba(5,8,16,.28));
+    radial-gradient(ellipse at 52% 48%, transparent 47%, rgba(0,0,0,.42) 100%),
+    linear-gradient(90deg, rgba(5,8,16,.2), transparent 18%, transparent 82%, rgba(5,8,16,.2));
 }
 .sang-wall-sign {
   position: absolute;
   z-index: 6;
   left: 50%;
-  top: 5.5%;
+  top: 10.4%;
   transform: translateX(-50%);
   border: 2px solid rgba(134,239,172,.55);
   padding: 5px 9px;
@@ -646,9 +655,9 @@ select:focus, textarea:focus { border-color: rgba(125,211,252,.58); box-shadow: 
 .sang-desk-light {
   position: absolute;
   z-index: 3;
-  width: 84px;
-  height: 18px;
-  transform: translate(-50%, 26px);
+  width: 54px;
+  height: 12px;
+  transform: translate(-50%, 22px);
   border-radius: 50%;
   background: radial-gradient(ellipse, color-mix(in srgb, var(--agent-color), transparent 42%), transparent 72%);
   opacity: .22;
@@ -656,21 +665,21 @@ select:focus, textarea:focus { border-color: rgba(125,211,252,.58); box-shadow: 
 }
 .sang-desk-light.active {
   opacity: .86;
-  transform: translate(-50%, 24px) scale(1.15);
+  transform: translate(-50%, 20px) scale(1.12);
   animation: sangDeskPulse 1.4s ease-in-out infinite;
 }
 .sang-ceo-zone {
   position: absolute;
   z-index: 3;
-  width: 126px;
-  min-height: 52px;
+  width: 112px;
+  min-height: 46px;
   transform: translate(-50%, -50%);
   display: grid;
   place-items: center;
   gap: 2px;
   border: 1px solid rgba(34,211,238,.42);
-  border-radius: 8px;
-  background: rgba(5,8,16,.72);
+  border-radius: 7px;
+  background: rgba(5,8,16,.5);
   color: #e0f2fe;
   box-shadow: 0 0 36px rgba(34,211,238,.22), inset 0 0 20px rgba(34,211,238,.1);
   pointer-events: none;
@@ -1239,7 +1248,7 @@ select:focus, textarea:focus { border-color: rgba(125,211,252,.58); box-shadow: 
 @keyframes sangPixelPulse { 50% { opacity: .55; text-shadow: 0 0 20px #00ff41; } }
 @keyframes sangRunningPulse { 50% { box-shadow: 0 0 22px rgba(34,211,238,.22); } }
 @keyframes sangLedBlink { 50% { opacity: .38; } }
-@keyframes sangDeskPulse { 50% { opacity: .48; transform: translate(-50%, 24px) scale(.95); } }
+@keyframes sangDeskPulse { 50% { opacity: .48; transform: translate(-50%, 20px) scale(.95); } }
 @keyframes sangRouteFlow { to { stroke-dashoffset: -18; } }
 @keyframes sangCharBob { 50% { transform: translateY(-2px) scale(1.4); } }
 @keyframes sangBubbleIn { from { opacity: 0; transform: translateX(-50%) translateY(calc(var(--bubble-offset) + 7px)) scale(.94); } }
@@ -1270,7 +1279,7 @@ select:focus, textarea:focus { border-color: rgba(125,211,252,.58); box-shadow: 
   .sang-sim-main { grid-template-columns: 1fr; gap: 6px; }
   .sang-control-panel { display: none; }
   .sang-stage-panel { min-height: 0; }
-  .sang-stage { min-height: 430px; }
+  .sang-stage { width: min(100%, 430px); height: auto; min-height: 0; }
   .sang-stage-label em { display: none; }
   .sang-hud { grid-template-columns: repeat(2, minmax(0,1fr)); width: 100%; }
   .sang-agent-modal-head { grid-template-columns: auto minmax(0, 1fr) auto; }

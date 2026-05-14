@@ -81,7 +81,7 @@ const CONNECT_AI_SOURCE_REPO = 'https://github.com/lsi9923/connect-ai';
 const SIM_SOURCE_REPO = 'https://github.com/lsi9923/sang-ai-office-simulator';
 const MANUS_PUBLIC_PROJECT = 'https://connectai-7gxqex9s.manus.space/';
 const MANUS_PROJECT_ID = '7GXqEX9S442FPxx7zqYqED';
-const OFFICE_MAP = '/connect-ai/assets/map.jpeg';
+const OFFICE_MAP = '/connect-ai/assets/office_design_2_ceo_room.gif';
 const SPRITE_BASE = '/connect-ai/pixel/characters';
 const WALK_DURATION = 1.1;
 
@@ -252,30 +252,30 @@ const SIM_AGENTS: SimAgentDef[] = [
 ];
 
 const DESK_POSITIONS: Partial<Record<AgentId, { x: number; y: number }>> = {
-  youtube: { x: 26, y: 32 },
-  instagram: { x: 40, y: 32 },
-  designer: { x: 54, y: 32 },
-  business: { x: 68, y: 32 },
-  developer: { x: 26, y: 56 },
-  secretary: { x: 68, y: 56 },
-  editor: { x: 38, y: 66 },
-  writer: { x: 56, y: 66 },
-  researcher: { x: 82, y: 46 },
-  ceo: { x: 47, y: 78 },
+  youtube: { x: 28, y: 31 },
+  instagram: { x: 47, y: 31 },
+  designer: { x: 66, y: 31 },
+  developer: { x: 24, y: 58 },
+  business: { x: 43, y: 58 },
+  secretary: { x: 62, y: 58 },
+  editor: { x: 81, y: 58 },
+  writer: { x: 42, y: 83 },
+  researcher: { x: 76, y: 83 },
+  ceo: { x: 54, y: 82 },
 };
 
-const CEO_POS = { x: 47, y: 78 };
+const CEO_POS = { x: 54, y: 82 };
 
 const CEO_OFFSETS: Partial<Record<AgentId, { dx: number; dy: number }>> = {
-  youtube: { dx: -18, dy: -10 },
-  instagram: { dx: -11, dy: -13 },
-  designer: { dx: -4, dy: -15 },
-  business: { dx: 4, dy: -15 },
-  developer: { dx: 11, dy: -13 },
-  secretary: { dx: 18, dy: -10 },
-  editor: { dx: -10, dy: 5 },
-  writer: { dx: 0, dy: 8 },
-  researcher: { dx: 10, dy: 5 },
+  youtube: { dx: -16, dy: -8 },
+  instagram: { dx: -10, dy: -11 },
+  designer: { dx: -4, dy: -12 },
+  business: { dx: 4, dy: -12 },
+  developer: { dx: 10, dy: -10 },
+  secretary: { dx: 16, dy: -8 },
+  editor: { dx: -12, dy: 4 },
+  writer: { dx: 0, dy: 7 },
+  researcher: { dx: 12, dy: 4 },
 };
 
 const AGENT_THOUGHTS: Record<string, string[]> = {
