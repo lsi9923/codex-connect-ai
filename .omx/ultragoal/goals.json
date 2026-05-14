@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "createdAt": "2026-05-14T07:47:36.354Z",
+  "updatedAt": "2026-05-14T08:14:34.411Z",
+  "briefPath": ".omx/ultragoal/brief.md",
+  "goalsPath": ".omx/ultragoal/goals.json",
+  "ledgerPath": ".omx/ultragoal/ledger.jsonl",
+  "codexGoalMode": "aggregate",
+  "goals": [
+    {
+      "id": "G001-react-vite-connect-ai-web-clone-ai-c",
+      "title": "React/Vite Connect AI web clone을 AI 직원 회사 시뮬레이터처럼 개선한다. CEO 명령이 직원별 작...",
+      "objective": "React/Vite Connect AI web clone을 AI 직원 회사 시뮬레이터처럼 개선한다. CEO 명령이 직원별 작업/모델/스킬/Telegram 승인/보고 로그에 반영되고, 실제 회사/게임 화면처럼 보이며, npm test/build와 브라우저 스모크로 검증한다.",
+      "status": "in_progress",
+      "attempt": 1,
+      "createdAt": "2026-05-14T07:47:36.354Z",
+      "updatedAt": "2026-05-14T08:14:34.411Z",
+      "startedAt": "2026-05-14T08:14:34.411Z"
+    }
+  ],
+  "codexObjective": "Complete all ultragoal stories in .omx/ultragoal/goals.json: G001-react-vite-connect-ai-web-clone-ai-c React/Vite Connect AI web clone을 AI 직원 회사 시뮬레이터처럼 개선한다. CEO 명령이 직원별 작...",
+  "activeGoalId": "G001-react-vite-connect-ai-web-clone-ai-c"
+}
