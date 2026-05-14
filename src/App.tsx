@@ -1313,10 +1313,14 @@ function ApprovalPanel({
   decisions: Record<string, ApprovalStatus>;
   respondApproval: (id: string, status: ApprovalStatus) => void;
 }) {
+  const sortedApprovals = [...approvals].sort((left, right) => {
+    const priority = (item: ApprovalItem) => item.id.startsWith('wiki-save-') ? 0 : item.id.startsWith('wiki-github-') ? 1 : 2;
+    return priority(left) - priority(right);
+  });
   return (
     <section className="approval-panel glass">
-      <div className="section-title"><Lock size={18} /><span>Telegram/승인 대기함</span></div>
-      {approvals.map((item) => {
+      <div className="section-title"><Lock size={18} /><span>Obsidian / Telegram 승인 대기함</span></div>
+      {sortedApprovals.map((item) => {
         const status = decisions[item.id] || item.status;
         return (
           <div className={`approval-item ${status === '승인 대기' ? 'waiting' : 'resolved'}`} key={item.id}>

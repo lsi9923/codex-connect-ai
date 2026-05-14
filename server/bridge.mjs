@@ -571,6 +571,25 @@ function getCurrentRun() {
   return state.runs.find((run) => run.id === state.currentRunId) || state.runs.at(-1) || null;
 }
 
+async function getCurrentRunForDisplay() {
+  const run = getCurrentRun();
+  if (!run) return null;
+  if (needsWikiSaveApprovalBackfill(run)) {
+    await queueWikiSaveApproval(run.id);
+    return getRunById(run.id) || run;
+  }
+  return run;
+}
+
+function needsWikiSaveApprovalBackfill(run) {
+  if (!run || run.wikiDraft?.status === 'saved') return false;
+  const approvals = run.approvals || [];
+  if (approvals.some((item) => String(item.id || '').startsWith(`wiki-save-${run.id}`))) return false;
+  const tasks = run.tasks || [];
+  if (tasks.some((task) => task.status === 'queued' || task.status === 'running')) return false;
+  return tasks.some((task) => task.status === 'done' || task.status === 'approval');
+}
+
 function saveRun(run) {
   const state = readState();
   const idx = state.runs.findIndex((item) => item.id === run.id);
@@ -1462,7 +1481,7 @@ async function route(req, res) {
     });
   }
   if (req.method === 'GET' && url.pathname === '/api/tasks') {
-    const run = getCurrentRun();
+    const run = await getCurrentRunForDisplay();
     return json(res, { run, plan: officePlanFromRun(run) });
   }
   if (req.method === 'POST' && url.pathname === '/api/tasks/dispatch') {
