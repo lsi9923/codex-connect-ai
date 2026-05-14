@@ -12,6 +12,7 @@ import {
   FileText,
   FolderKanban,
   GitBranch,
+  ImageIcon,
   Layers3,
   Lock,
   MapPinned,
@@ -19,12 +20,14 @@ import {
   Play,
   Plus,
   Radio,
+  RotateCcw,
   Send,
   Settings2,
   ShieldCheck,
   SlidersHorizontal,
   Smartphone,
   Sparkles,
+  UserPen,
   Workflow,
   Wand2,
   X,
@@ -50,6 +53,7 @@ import {
   recommendSkillsForAgent,
   skillSourceLabel,
 } from './skillCatalog';
+import { AgentProfileOverrides, PROFILE_STORAGE_KEY, resolveAgentProfile } from './profileOverrides';
 import { OfficeStage3D } from './OfficeStage3D';
 import { SangOfficeSimulator } from './SangOfficeSimulator';
 import './styles.css';
@@ -282,16 +286,29 @@ function modelLabel(modelId: string) {
   return modelOptions.find((item) => item.id === modelId)?.label || modelId.split('/').pop() || modelId;
 }
 
+function readStoredProfileOverrides(): AgentProfileOverrides {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.localStorage.getItem(PROFILE_STORAGE_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw) as AgentProfileOverrides;
+  } catch {
+    return {};
+  }
+}
+
 function Office({
   activeAgent,
   plan,
   selectAgent,
   opsSettings,
+  profileOverrides,
 }: {
   activeAgent: AgentId;
   plan: OfficePlan;
   selectAgent: (id: AgentId) => void;
   opsSettings: ConnectAiOpsSettings;
+  profileOverrides: AgentProfileOverrides;
 }) {
   const activeRoster = plan.activeAgents.length ? plan.activeAgents : SPECIALIST_IDS;
   const tasksByAgent = useMemo(() => new Map(plan.tasks.map((task) => [task.agent, task])), [plan.tasks]);
@@ -305,6 +322,7 @@ function Office({
   const phaseIndex = phaseOrder.indexOf(engine.phase);
   const phaseProgress = motionPhaseProgress(engine.phase, engine.phaseStartedAt, motionNow);
   const currentAgent = AGENTS[engine.agent];
+  const currentProfile = resolveAgentProfile(currentAgent, profileOverrides);
   const currentTask = tasksByAgent.get(engine.agent);
 
   useEffect(() => {
@@ -354,7 +372,7 @@ function Office({
           <div className={`status-pill always-on ${opsSettings.autoCycleEnabled ? 'on' : 'standby'}`}>
             <Radio size={15} /> {opsSettings.autoCycleEnabled ? '24시간 업무 실행 중' : '24시간 업무 대기'} · connectAiLab.autoCycleEnabled
           </div>
-          <div className="status-pill live"><Radio size={15} /> Game Engine ON · {currentAgent.name} {phaseLabels[engine.phase]}</div>
+          <div className="status-pill live"><Radio size={15} /> Game Engine ON · {currentProfile.name} {phaseLabels[engine.phase]}</div>
           <div className="mini-clock"><Clock size={14} /> Run #{plan.runId + 1} · 단계 {phaseIndex + 1}/4 · {plan.headline}</div>
         </div>
       </div>
@@ -368,6 +386,7 @@ function Office({
           motionAgent={engine.agent}
           motionPhase={engine.phase}
           motionProgress={phaseProgress}
+          profileOverrides={profileOverrides}
         />
         <div className="office-room-shell">
           <div className="back-wall">
@@ -402,7 +421,7 @@ function Office({
         <div className="meeting-table">
           <span>CEO</span>
           <strong>명령 분배 테이블</strong>
-          <em>{currentAgent.emoji} {currentAgent.name} 보고 중</em>
+          <em>{currentAgent.emoji} {currentProfile.name} 보고 중</em>
         </div>
         <div className="whiteboard">
           <b>현재 지시</b>
@@ -417,6 +436,7 @@ function Office({
         <div className="desk desk-e">TXT</div>
         {plan.tasks.map((task) => {
           const agent = AGENTS[task.agent];
+          const profile = resolveAgentProfile(agent, profileOverrides);
           const bubbleLayout = speechBubbleLayouts[task.agent] || { dx: 0, dy: -128, anchor: 'above' };
           const isEngineAgent = task.agent === engine.agent;
           const speechPoint = movingSpeechBubblePosition(agent, isEngineAgent, engine.phase, phaseProgress);
@@ -436,11 +456,11 @@ function Office({
                 ['--terminal-y' as string]: `${speechOffsetY}px`,
               }}
               onClick={() => selectAgent(task.agent)}
-              aria-label={`${agent.name} 통합 업무 말풍선: ${task.title} ${speechLine} ${task.output}`}
+              aria-label={`${profile.name} 통합 업무 말풍선: ${task.title} ${speechLine} ${task.output}`}
             >
               <span className="desk-terminal-head">
-                {agent.profileImage ? <img src={agent.profileImage} alt="" /> : <em>{agent.emoji}</em>}
-                <b>{agent.name}</b>
+                {profile.profileImage ? <img src={profile.profileImage} alt="" /> : <em>{agent.emoji}</em>}
+                <b>{profile.name}</b>
                 <small>{taskStatusLabel[task.status]} · {modelLabel(task.model)}</small>
               </span>
               <strong className="desk-terminal-task">{task.title}</strong>
@@ -466,7 +486,7 @@ function Office({
 
         <div className="game-state-panel">
           <b><MapPinned size={13} /> State Machine</b>
-          <span>직원: {currentAgent.emoji} {currentAgent.name}</span>
+          <span>직원: {currentAgent.emoji} {currentProfile.name}</span>
           <span>단계: {phaseLabels[engine.phase]}</span>
           <span>업무: {currentTask?.title || 'CEO 운영'}</span>
           <span>모델: {modelLabel(currentTask?.model || currentAgent.defaultModel)}</span>
@@ -488,7 +508,7 @@ function Office({
           <span>모델 선택 가능</span>
         </div>
         <div className="sang-sim-cover">
-          <SangOfficeSimulator plan={plan} selectAgent={selectAgent} />
+          <SangOfficeSimulator plan={plan} selectAgent={selectAgent} profileOverrides={profileOverrides} />
         </div>
 
       </div>
@@ -579,6 +599,9 @@ function ProfilePanel({
   skills,
   onSkillsChange,
   onRecommendSkills,
+  profileOverrides,
+  onProfileChange,
+  onProfileReset,
 }: {
   agent: AgentDef;
   model: string;
@@ -587,20 +610,53 @@ function ProfilePanel({
   skills: string[];
   onSkillsChange: (id: AgentId, skills: string[]) => void;
   onRecommendSkills: (id: AgentId) => void;
+  profileOverrides: AgentProfileOverrides;
+  onProfileChange: (id: AgentId, patch: { name?: string; profileImage?: string }) => void;
+  onProfileReset: (id: AgentId) => void;
 }) {
+  const safeProfileOverrides = profileOverrides || {};
+  const profile = resolveAgentProfile(agent, safeProfileOverrides);
+  const profileNameValue = safeProfileOverrides[agent.id]?.name ?? agent.name;
+  const profileImageValue = safeProfileOverrides[agent.id]?.profileImage ?? agent.profileImage ?? '';
+
   return (
     <aside className="profile-panel glass">
       <div className="profile-head">
         <div className="profile-photo" style={{ borderColor: agent.color }}>
-          {agent.profileImage ? <img src={agent.profileImage} alt={agent.name} /> : agent.emoji}
+          {profile.profileImage ? <img src={profile.profileImage} alt={profile.name} /> : agent.emoji}
         </div>
         <div>
           <p className="eyebrow">{agent.id}</p>
-          <h2>{agent.emoji} {agent.name}</h2>
+          <h2>{agent.emoji} {profile.name}</h2>
           <p>{agent.role}</p>
         </div>
       </div>
       <div className="quote">"{agent.tagline}"</div>
+      <div className="profile-edit-grid" aria-label="직원 프로필 편집">
+        <label className="field-label" htmlFor={`profile-name-${agent.id}`}>
+          <span><UserPen size={14} /> 표시 이름</span>
+          <input
+            id={`profile-name-${agent.id}`}
+            name={`profile-name-${agent.id}`}
+            value={profileNameValue}
+            placeholder={agent.name}
+            onChange={(event) => onProfileChange(agent.id, { name: event.target.value })}
+          />
+        </label>
+        <label className="field-label" htmlFor={`profile-image-${agent.id}`}>
+          <span><ImageIcon size={14} /> 사진 URL</span>
+          <input
+            id={`profile-image-${agent.id}`}
+            name={`profile-image-${agent.id}`}
+            value={profileImageValue}
+            placeholder="https://... 또는 /connect-ai/..."
+            onChange={(event) => onProfileChange(agent.id, { profileImage: event.target.value })}
+          />
+        </label>
+        <button type="button" className="profile-reset-btn" onClick={() => onProfileReset(agent.id)}>
+          <RotateCcw size={14} /> 기본값 복원
+        </button>
+      </div>
       <label className="field-label">
         <span><Cpu size={14} /> 담당 모델</span>
         <select
@@ -683,6 +739,7 @@ function ConnectAiOpsPanel({
   opsSettings,
   setOpsSettings,
   telegramIdentity,
+  profileOverrides,
 }: {
   plan: OfficePlan;
   skillSettings: SkillSettings;
@@ -691,6 +748,7 @@ function ConnectAiOpsPanel({
   opsSettings: ConnectAiOpsSettings;
   setOpsSettings: Dispatch<SetStateAction<ConnectAiOpsSettings>>;
   telegramIdentity: TelegramIdentity;
+  profileOverrides: AgentProfileOverrides;
 }) {
   const totalSkills = AGENT_ORDER.reduce((sum, id) => sum + (skillSettings[id] || AGENTS[id].suggestedSkills).length, 0);
   const runningCount = plan.tasks.filter((task) => task.status === 'running').length;
@@ -825,12 +883,15 @@ function ConnectAiOpsPanel({
           <strong><Settings2 size={14} /> Profiles</strong>
           {profiles.map((profile) => {
             const agent = AGENTS[profile.agent];
+            const owner = resolveAgentProfile(agent, profileOverrides);
             const skills = skillSettings[profile.agent] || agent.suggestedSkills;
             return (
               <button type="button" className={activeAgent === profile.agent ? 'active' : ''} key={profile.id} onClick={() => selectAgent(profile.agent)}>
-                <span>{agent.emoji}</span>
+                <span className="profile-stack-avatar">
+                  {owner.profileImage ? <img src={owner.profileImage} alt="" /> : agent.emoji}
+                </span>
                 <b>{profile.label}</b>
-                <small>{profile.provider} · {modelLabel(agent.defaultModel)} · {skills.length} skills</small>
+                <small>{owner.name} · {profile.provider} · {modelLabel(agent.defaultModel)} · {skills.length} skills</small>
                 <em>{profile.status}</em>
               </button>
             );
@@ -846,7 +907,7 @@ function ConnectAiOpsPanel({
               <em>{row.value}%</em>
             </div>
           ))}
-          <p>{activeTask ? `${AGENTS[activeTask.agent].name} 작업 결과가 MEMORY.md와 새 스킬 후보로 들어가는 흐름입니다.` : 'CEO 지시가 장기 기억과 스킬 후보로 정리됩니다.'}</p>
+          <p>{activeTask ? `${resolveAgentProfile(AGENTS[activeTask.agent], profileOverrides).name} 작업 결과가 MEMORY.md와 새 스킬 후보로 들어가는 흐름입니다.` : 'CEO 지시가 장기 기억과 스킬 후보로 정리됩니다.'}</p>
         </div>
 
         <div className="gateway-schedule">
@@ -873,24 +934,44 @@ function ConnectAiOpsPanel({
   );
 }
 
-function TaskBoard({ plan, selectAgent }: { plan: OfficePlan; selectAgent: (id: AgentId) => void }) {
+function TaskBoard({
+  plan,
+  selectAgent,
+  profileOverrides,
+}: {
+  plan: OfficePlan;
+  selectAgent: (id: AgentId) => void;
+  profileOverrides: AgentProfileOverrides;
+}) {
   return (
     <section className="task-board glass">
       <div className="section-title"><FolderKanban size={18} /><span>직원별 작업 카드</span></div>
       <p className="ceo-brief">{plan.brief}</p>
       <div className="task-grid">
-        {plan.tasks.map((task) => (
-          <button key={task.id} className={`task-card ${task.status}`} onClick={() => selectAgent(task.agent)} style={{ borderColor: AGENTS[task.agent].color }}>
-            <span className="task-agent">{AGENTS[task.agent].emoji} {AGENTS[task.agent].name} · {task.priority}</span>
-            <strong>{task.title}</strong>
-            <small>{task.brief}</small>
-            <div className="task-progress"><i style={{ width: `${task.progress}%` }} /></div>
-            <span className="task-model"><Cpu size={13} /> {modelLabel(task.model)}</span>
-            <span className="task-skills"><Zap size={13} /> {task.skills.slice(0, 4).join(' · ')}</span>
-            <span className="task-output"><FileText size={13} /> {task.output}</span>
-            <em>{taskStatusLabel[task.status]}</em>
-          </button>
-        ))}
+        {plan.tasks.map((task) => {
+          const agent = AGENTS[task.agent];
+          const profile = resolveAgentProfile(agent, profileOverrides);
+          return (
+            <button key={task.id} className={`task-card ${task.status}`} onClick={() => selectAgent(task.agent)} style={{ borderColor: agent.color }}>
+              <span className="task-agent-profile">
+                <span className="task-avatar" style={{ borderColor: agent.color }}>
+                  {profile.profileImage ? <img src={profile.profileImage} alt="" /> : <em>{agent.emoji}</em>}
+                </span>
+                <span>
+                  <b>{profile.name}</b>
+                  <small>{agent.role} · {task.priority}</small>
+                </span>
+              </span>
+              <strong>{task.title}</strong>
+              <small>{task.brief}</small>
+              <div className="task-progress"><i style={{ width: `${task.progress}%` }} /></div>
+              <span className="task-model"><Cpu size={13} /> {modelLabel(task.model)}</span>
+              <span className="task-skills"><Zap size={13} /> {task.skills.slice(0, 4).join(' · ')}</span>
+              <span className="task-output"><FileText size={13} /> {task.output}</span>
+              <em>{taskStatusLabel[task.status]}</em>
+            </button>
+          );
+        })}
       </div>
     </section>
   );
@@ -903,6 +984,7 @@ function ModelRoutingPanel({
   selectAgent,
   onModelChange,
   onRecommendSkills,
+  profileOverrides,
 }: {
   activeAgent: AgentId;
   modelSettings: ModelSettings;
@@ -910,6 +992,7 @@ function ModelRoutingPanel({
   selectAgent: (id: AgentId) => void;
   onModelChange: (id: AgentId, model: string) => void;
   onRecommendSkills: (id: AgentId) => void;
+  profileOverrides: AgentProfileOverrides;
 }) {
   return (
     <section className="routing-panel glass">
@@ -917,11 +1000,12 @@ function ModelRoutingPanel({
       <div className="routing-list">
         {AGENT_ORDER.filter((id) => id !== 'ceo').map((id) => {
           const agent = AGENTS[id];
+          const profile = resolveAgentProfile(agent, profileOverrides);
           return (
             <div className={`routing-row ${activeAgent === id ? 'active' : ''}`} key={id}>
               <button type="button" onClick={() => selectAgent(id)}>
-                <span>{agent.emoji}</span>
-                <strong>{agent.name}</strong>
+                <span className="routing-avatar">{profile.profileImage ? <img src={profile.profileImage} alt="" /> : agent.emoji}</span>
+                <strong>{profile.name}</strong>
               </button>
               <select
                 id={`routing-model-${id}`}
@@ -1041,9 +1125,14 @@ export default function App() {
   const [opsSettings, setOpsSettings] = useState<ConnectAiOpsSettings>(defaultConnectAiOpsSettings);
   const [telegramIdentity, setTelegramIdentity] = useState<TelegramIdentity>(defaultTelegramIdentity);
   const [approvalDecisions, setApprovalDecisions] = useState<Record<string, ApprovalStatus>>({});
+  const [profileOverrides, setProfileOverrides] = useState<AgentProfileOverrides>(() => readStoredProfileOverrides());
   const plan = useMemo(() => makePlan(prompt, seed, modelSettings, skillSettings), [modelSettings, prompt, seed, skillSettings]);
   const selected = AGENTS[activeAgent];
   const selectedSkills = skillSettings[activeAgent] || selected.suggestedSkills;
+
+  useEffect(() => {
+    window.localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profileOverrides));
+  }, [profileOverrides]);
 
   useEffect(() => {
     let alive = true;
@@ -1077,6 +1166,18 @@ export default function App() {
 
   const updateSkills = (id: AgentId, skills: string[]) => {
     setSkillSettings((prev) => ({ ...prev, [id]: normalizeSkillList(skills) }));
+  };
+
+  const updateAgentProfile = (id: AgentId, patch: { name?: string; profileImage?: string }) => {
+    setProfileOverrides((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } }));
+  };
+
+  const resetAgentProfile = (id: AgentId) => {
+    setProfileOverrides((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
   };
 
   const applyRecommendedSkills = (id: AgentId) => {
@@ -1125,7 +1226,7 @@ export default function App() {
 
       <main className="layout">
         <div className="left-col">
-          <Office activeAgent={activeAgent} plan={plan} selectAgent={setActiveAgent} opsSettings={opsSettings} />
+          <Office activeAgent={activeAgent} plan={plan} selectAgent={setActiveAgent} opsSettings={opsSettings} profileOverrides={profileOverrides} />
           <CommandCenter prompt={prompt} plan={plan} setPrompt={setPrompt} runPlan={runPlan} applyRecommendedToAll={applyRecommendedToAll} />
           <ConnectAiOpsPanel
             plan={plan}
@@ -1135,6 +1236,7 @@ export default function App() {
             opsSettings={opsSettings}
             setOpsSettings={setOpsSettings}
             telegramIdentity={telegramIdentity}
+            profileOverrides={profileOverrides}
           />
         </div>
         <div className="right-col agent-inspector">
@@ -1146,10 +1248,13 @@ export default function App() {
             skills={selectedSkills}
             onSkillsChange={updateSkills}
             onRecommendSkills={applyRecommendedSkills}
+            profileOverrides={profileOverrides}
+            onProfileChange={updateAgentProfile}
+            onProfileReset={resetAgentProfile}
           />
         </div>
         <div className="workbench-grid">
-          <TaskBoard plan={plan} selectAgent={setActiveAgent} />
+          <TaskBoard plan={plan} selectAgent={setActiveAgent} profileOverrides={profileOverrides} />
           <Reports plan={plan} />
           <ApprovalPanel approvals={plan.approvals} decisions={approvalDecisions} respondApproval={(id, status) => setApprovalDecisions((prev) => ({ ...prev, [id]: status }))} />
           <BrainPanel plan={plan} />
@@ -1160,6 +1265,7 @@ export default function App() {
             selectAgent={setActiveAgent}
             onModelChange={updateModel}
             onRecommendSkills={applyRecommendedSkills}
+            profileOverrides={profileOverrides}
           />
           <VideoPanel />
         </div>

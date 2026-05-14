@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { AGENTS, AgentId, SPECIALIST_IDS } from './agents';
 import type { OfficePlan } from './simulator';
+import { AgentProfileOverrides, resolveAgentProfile } from './profileOverrides';
 
 type AgentSceneItem = {
   id: AgentId;
@@ -355,6 +356,7 @@ export function OfficeStage3D({
   motionAgent,
   motionPhase,
   motionProgress,
+  profileOverrides = {},
 }: {
   plan: OfficePlan;
   activeAgent: AgentId;
@@ -363,12 +365,14 @@ export function OfficeStage3D({
   motionAgent: AgentId;
   motionPhase: MotionPhase;
   motionProgress: number;
+  profileOverrides?: AgentProfileOverrides;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const planRef = useRef(plan);
   const activeAgentRef = useRef(activeAgent);
   const selectAgentRef = useRef(selectAgent);
   const opsSettingsRef = useRef(opsSettings);
+  const profileOverridesRef = useRef(profileOverrides);
   const motionRef = useRef<MotionRouteState>({ agent: motionAgent, phase: motionPhase, progress: motionProgress });
 
   useEffect(() => {
@@ -376,8 +380,9 @@ export function OfficeStage3D({
     activeAgentRef.current = activeAgent;
     selectAgentRef.current = selectAgent;
     opsSettingsRef.current = opsSettings;
+    profileOverridesRef.current = profileOverrides;
     motionRef.current = { agent: motionAgent, phase: motionPhase, progress: motionProgress };
-  }, [activeAgent, motionAgent, motionPhase, motionProgress, opsSettings, plan, selectAgent]);
+  }, [activeAgent, motionAgent, motionPhase, motionProgress, opsSettings, plan, profileOverrides, selectAgent]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -519,6 +524,7 @@ export function OfficeStage3D({
       const route = computeRoute();
       const activeItem = agents.get(route.agentId);
       const currentOps = opsSettingsRef.current;
+      const currentProfiles = profileOverridesRef.current;
       const payload = {
         mode: 'three-office-lego-stage',
         coordinateSystem: 'x left/right, z depth, y height',
@@ -535,14 +541,18 @@ export function OfficeStage3D({
         motionProgress: Number(route.progress.toFixed(3)),
         movingAgents: Array.from(agents.values()).map((item) => ({
           id: item.id,
+          name: resolveAgentProfile(AGENTS[item.id], currentProfiles).name,
           x: Number(item.group.position.x.toFixed(2)),
           z: Number(item.group.position.z.toFixed(2)),
           facingYaw: Number(item.facingYaw.toFixed(3)),
         })),
         speechBubbles: Array.from(agents.values()).map((item) => {
           const task = planRef.current.tasks.find((candidate) => candidate.agent === item.id);
+          const profile = resolveAgentProfile(AGENTS[item.id], currentProfiles);
           return {
             id: item.id,
+            name: profile.name,
+            profileImage: profile.profileImage,
             visible: true,
             task: task?.title || '다음 업무 준비',
             status: task?.status || 'queued',

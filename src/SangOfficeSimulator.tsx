@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import type { AgentId } from './agents';
+import { AGENTS, type AgentId } from './agents';
 import type { OfficePlan } from './simulator';
+import { AgentProfileOverrides, resolveAgentProfile } from './profileOverrides';
 
 type SimAgentState = 'idle' | 'thinking' | 'walking_to_ceo' | 'reporting' | 'walking_home' | 'working';
 type SimReportMode = 'sequential' | 'parallel';
@@ -371,7 +372,7 @@ function getSpritePosition(direction: SimDirection, isWalking: boolean, isWorkin
   return `-${(colOffset + frameIndex) * TILE}px -${row * CHAR_HEIGHT}px`;
 }
 
-function useSangSimulation(plan: OfficePlan) {
+function useSangSimulation(plan: OfficePlan, profileOverrides: AgentProfileOverrides = {}) {
   const agentsRef = useRef<SimAgentStatus[]>(SIM_AGENTS.map(initialAgent));
   const [renderState, setRenderState] = useState<SimState>({
     agents: agentsRef.current,
@@ -397,6 +398,11 @@ function useSangSimulation(plan: OfficePlan) {
   const modeRef = useRef<SimReportMode>('sequential');
   const logRef = useRef<SimLogEntry[]>([]);
   const completedTasksRef = useRef<Partial<Record<AgentId, CompletedTask[]>>>({});
+  const profileOverridesRef = useRef(profileOverrides);
+
+  useEffect(() => {
+    profileOverridesRef.current = profileOverrides;
+  }, [profileOverrides]);
 
   const syncState = useCallback(() => {
     setRenderState((prev) => ({
@@ -671,9 +677,14 @@ function useSangSimulation(plan: OfficePlan) {
       reportingAgentIds: reportingRef.current,
       completedTasks: completedTasksRef.current,
       spriteConfig: SPRITE_CONFIG,
+      agentProfiles: Object.fromEntries(agentsRef.current.map((agent) => {
+        const profile = resolveAgentProfile(AGENTS[agent.id] || agent, profileOverridesRef.current);
+        return [agent.id, { name: profile.name, profileImage: profile.profileImage }];
+      })),
       agents: agentsRef.current.map((agent) => ({
         id: agent.id,
-        name: agent.name,
+        name: resolveAgentProfile(AGENTS[agent.id] || agent, profileOverridesRef.current).name,
+        profileImage: resolveAgentProfile(AGENTS[agent.id] || agent, profileOverridesRef.current).profileImage,
         state: agent.state,
         direction: agent.direction,
         x: Number(agent.x.toFixed(2)),
@@ -1031,18 +1042,24 @@ function AgentDetailModal({
 export function SangOfficeSimulator({
   plan,
   selectAgent,
+  profileOverrides = {},
 }: {
   plan: OfficePlan;
   selectAgent: (id: AgentId) => void;
+  profileOverrides?: AgentProfileOverrides;
 }) {
-  const { state, issueCommand, issueRandomCommand, toggleReportMode } = useSangSimulation(plan);
+  const { state, issueCommand, issueRandomCommand, toggleReportMode } = useSangSimulation(plan, profileOverrides);
   const [draft, setDraft] = useState(plan.brief);
   const [selectedSimAgentId, setSelectedSimAgentId] = useState<AgentId | null>(null);
-  const activeCount = state.agents.filter((agent) => agent.state !== 'idle').length;
-  const reportingAgents = state.agents.filter((agent) => agent.state === 'reporting' || agent.state === 'walking_to_ceo');
-  const activeAgent = state.agents.find((agent) => agent.id === state.activeAgentId);
+  const displayAgents = useMemo(() => state.agents.map((agent) => {
+    const profile = resolveAgentProfile(AGENTS[agent.id] || agent, profileOverrides);
+    return { ...agent, name: profile.name };
+  }), [profileOverrides, state.agents]);
+  const activeCount = displayAgents.filter((agent) => agent.state !== 'idle').length;
+  const reportingAgents = displayAgents.filter((agent) => agent.state === 'reporting' || agent.state === 'walking_to_ceo');
+  const activeAgent = displayAgents.find((agent) => agent.id === state.activeAgentId);
   const isParallel = state.reportMode === 'parallel';
-  const selectedSimAgent = selectedSimAgentId ? state.agents.find((agent) => agent.id === selectedSimAgentId) || null : null;
+  const selectedSimAgent = selectedSimAgentId ? displayAgents.find((agent) => agent.id === selectedSimAgentId) || null : null;
   const selectedCompletedTasks = selectedSimAgentId ? state.completedTasks[selectedSimAgentId] || [] : [];
 
   const handleAgentClick = useCallback((id: AgentId) => {
@@ -1094,7 +1111,7 @@ export function SangOfficeSimulator({
           </div>
           <div className="sang-stage-frame">
             <SangOfficeStage
-              agents={state.agents}
+              agents={displayAgents}
               activeAgentId={state.activeAgentId}
               reportingAgentIds={state.reportingAgentIds}
               isParallel={isParallel}
@@ -1146,15 +1163,16 @@ export function SangOfficeSimulator({
           <section>
             <strong><span>▣</span> AGENT STATUS <em>{activeCount}/{state.agents.length}</em></strong>
             <div className="sang-agent-cards">
-              {state.agents.map((agent) => <AgentStatusCard key={agent.id} agent={agent} />)}
+              {displayAgents.map((agent) => <AgentStatusCard key={agent.id} agent={agent} />)}
             </div>
           </section>
           <section className="sang-log-section">
             <strong><span>▸</span> ACTIVITY LOG <em>{state.log.length}</em></strong>
             <div>
-              {state.log.length === 0 ? <p>명령을 내리면 로그가 쌓입니다...</p> : state.log.map((entry, idx) => (
-                <p key={`${entry.ts}-${idx}`}><span>{entry.emoji} {entry.name}</span>{entry.msg}</p>
-              ))}
+              {state.log.length === 0 ? <p>명령을 내리면 로그가 쌓입니다...</p> : state.log.map((entry, idx) => {
+                const profile = resolveAgentProfile(AGENTS[entry.id as AgentId] || { id: entry.id as AgentId, name: entry.name }, profileOverrides);
+                return <p key={`${entry.ts}-${idx}`}><span>{entry.emoji} {profile.name}</span>{entry.msg}</p>;
+              })}
             </div>
           </section>
         </aside>

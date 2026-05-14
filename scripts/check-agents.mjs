@@ -25,6 +25,9 @@ assert(simulatorTs.includes('00_Raw') && simulatorTs.includes('10_Wiki') && simu
 assert(skillCatalogTs.includes('localSkillCatalog') && skillCatalogTs.includes('recommendSkillsForAgent'), '로컬 스킬 추천 카탈로그가 필요합니다.');
 assert(skillCatalogTs.includes('pixel-agent-office-simulator') && skillCatalogTs.includes('Local Skill') && agentsTs.includes('pixel-agent-office-simulator'), '다운로드한 pixel-agent-office-simulator 스킬이 추천 카탈로그와 기본 직원 스킬에 연결되어야 합니다.');
 assert(appTsx.includes('SkillEditor') && appTsx.includes('전 직원 추천 스킬 붙이기'), '직원별 스킬 편집/추천 UI가 필요합니다.');
+assert(appTsx.includes('PROFILE_STORAGE_KEY') && appTsx.includes('profileOverrides') && appTsx.includes('profile-edit-grid'), '직원 프로필 이름/사진 편집값은 저장되고 화면 전체에 연결되어야 합니다.');
+assert(appTsx.includes('task-agent-profile') && appTsx.includes('task-avatar') && stylesCss.includes('task-agent-profile'), '직원별 작업 카드에는 프로필 사진과 표시 이름이 보여야 합니다.');
+assert(sangSimTsx.includes('agentProfiles') && sangSimTsx.includes('profileImage: resolveAgentProfile'), '시뮬레이션 디버그 payload도 편집된 직원 이름과 사진을 노출해야 합니다.');
 assert(appTsx.includes('ConnectAiOpsPanel') && appTsx.includes('Closed Learning Loop'), 'Connect AI/Hermes 운영 레이어가 필요합니다.');
 assert(appTsx.includes('defaultConnectAiOpsSettings') && appTsx.includes('autoCycleEnabled: false'), '24시간 업무는 사용자가 켜기 전 대기 상태여야 합니다.');
 assert(appTsx.includes('24시간 시작') && appTsx.includes('24시간 중지') && appTsx.includes('connectAiLab.autoCycleEnabled'), '24시간 업무 시작/중지 제어가 필요합니다.');
