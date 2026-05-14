@@ -16,7 +16,7 @@ export interface AgentDef {
   permissions: string[];
 }
 
-const RAW = 'https://raw.githubusercontent.com/wonseokjung/connect-ai/main/assets/agents/';
+const RAW = 'https://raw.githubusercontent.com/lsi9923/connect-ai/main/assets/agents/';
 
 export const AGENTS: Record<AgentId, AgentDef> = {
   ceo: {

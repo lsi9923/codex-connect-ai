@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   CircleDot,
   Clock,
-  CloudOff,
   Cpu,
   Database,
   DoorOpen,
@@ -62,6 +61,7 @@ const videos = [
 ];
 
 const referenceLinks = [
+  { href: 'https://github.com/lsi9923/connect-ai', tag: 'Connect AI GitHub Repo', title: 'Connect AI v2 · P-Reinforce · 24시간 자율 사이클 · Agent University' },
   { href: 'https://github.com/fathah/hermes-desktop', tag: 'GitHub Repo', title: 'Hermes Desktop · profiles, memory, skills, schedules, gateways, Claw3d' },
   { href: 'https://hermes-agent.nousresearch.com/docs', tag: 'Hermes Docs', title: 'Hermes Agent documentation' },
   { href: 'https://hermes-agent.nousresearch.com/docs/user-stories', tag: 'Use Cases', title: 'Hermes Agent user stories' },
@@ -108,6 +108,44 @@ const approvalChoices: { label: ApprovalStatus; short: string }[] = [
 const hermesSlashCommands = ['/memory', '/skills', '/tools', '/status', '/usage', '/model', '/browse', '/code', '/schedule'];
 const hermesGateways = ['Telegram', 'Discord', 'Slack', 'Webhooks', 'Email', 'Home Assistant'];
 const hermesLoopLabels = ['업무 관찰', '장기 기억 저장', '스킬 개선 제안', '예약 실행 대기'];
+const connectAiOpsSignals = [
+  {
+    label: '24시간 업무 ON',
+    setting: 'connectAiLab.autoCycleEnabled',
+    value: '24시간 자율 사이클 ON',
+    detail: '30분 이상 자리를 비우면 CEO가 다음 업무 루프를 자동 배정',
+    tone: 'live',
+  },
+  {
+    label: '데일리 브리핑',
+    setting: 'connectAiLab.dailyBriefingTime',
+    value: '09:00',
+    detail: '매일 오전 업무 요약과 다음 실행 후보를 Secretary가 정리',
+    tone: 'briefing',
+  },
+  {
+    label: '비서 브릿지',
+    setting: 'connectAiLab.secretaryBridgeMode',
+    value: 'output_only',
+    detail: 'Telegram 전송 전 보고서만 출력하고 승인을 기다리는 모드',
+    tone: 'bridge',
+  },
+  {
+    label: 'Auto-Git Sync',
+    setting: 'P-Reinforce Auto-Git Sync',
+    value: '승인 대기',
+    detail: 'Developer 산출물은 승인 뒤 커밋/동기화되는 흐름으로 표시',
+    tone: 'approval',
+  },
+  {
+    label: 'Dynamic Model Detection',
+    setting: 'Connect AI model probe',
+    value: '모델 선택 가능',
+    detail: 'Ollama, LM Studio, OpenRouter, OpenAI 계열 모델 라우팅 UI 유지',
+    tone: 'model',
+  },
+];
+const connectAiSourceBadges = ['P-Reinforce', 'Agent University', 'Auto-Git Sync', 'Dynamic Model Detection'];
 
 function modelLabel(modelId: string) {
   return modelOptions.find((item) => item.id === modelId)?.label || modelId.split('/').pop() || modelId;
@@ -153,6 +191,7 @@ function Office({ activeAgent, plan, selectAgent }: { activeAgent: AgentId; plan
           <h2>AI 직원 회사 운영 화면 <span className="version-badge">Office Simulator v3</span></h2>
         </div>
         <div className="status-stack">
+          <div className="status-pill always-on"><Radio size={15} /> 24시간 업무 ON · connectAiLab.autoCycleEnabled</div>
           <div className="status-pill live"><Radio size={15} /> Game Engine ON · {currentAgent.name} {phaseLabels[engine.phase]}</div>
           <div className="mini-clock"><Clock size={14} /> Run #{plan.runId + 1} · 단계 {phaseIndex + 1}/4 · {plan.headline}</div>
         </div>
@@ -220,7 +259,10 @@ function Office({ activeAgent, plan, selectAgent }: { activeAgent: AgentId; plan
               }}
               onClick={() => selectAgent(task.agent)}
             >
-              <b>{agent.emoji} {agent.name}</b>
+              <span className="desk-terminal-head">
+                {agent.profileImage ? <img src={agent.profileImage} alt="" /> : <em>{agent.emoji}</em>}
+                <b>{agent.name}</b>
+              </span>
               <span>{taskStatusLabel[task.status]} · {task.progress}%</span>
               <i style={{ width: `${task.progress}%` }} />
             </button>
@@ -339,7 +381,7 @@ function SkillEditor({
               addDraft();
             }
           }}
-          placeholder="직접 스킬 이름 입력"
+          aria-label="직접 스킬 이름 입력"
         />
         <button type="button" onClick={addDraft}><Plus size={14} /> 추가</button>
       </div>
@@ -460,7 +502,7 @@ function CommandCenter({
   );
 }
 
-function HermesDesktopOpsPanel({
+function ConnectAiOpsPanel({
   plan,
   skillSettings,
   activeAgent,
@@ -490,10 +532,24 @@ function HermesDesktopOpsPanel({
   ];
 
   return (
-    <section className="hermes-desktop-panel glass">
+    <section className="connect-ai-ops-panel hermes-desktop-panel glass">
       <div className="section-title">
         <Workflow size={18} />
-        <span>Hermes Desktop 운영 레이어</span>
+        <span>Connect AI 24시간 운영 레이어</span>
+      </div>
+      <div className="ops-signal-strip">
+        {connectAiOpsSignals.map((signal) => (
+          <div className={`ops-signal ${signal.tone}`} key={signal.setting}>
+            <span>{signal.label}</span>
+            <strong>{signal.value}</strong>
+            <code>{signal.setting}</code>
+            <small>{signal.detail}</small>
+          </div>
+        ))}
+      </div>
+      <div className="source-badges">
+        <span><Database size={14} /> lsi9923/connect-ai 원본 신호 반영</span>
+        {connectAiSourceBadges.map((badge) => <em key={badge}>{badge}</em>)}
       </div>
       <div className="hermes-ops-strip">
         <span><Cpu size={14} /> Local API 127.0.0.1:8642</span>
@@ -674,19 +730,27 @@ function ApprovalPanel({
 function VideoPanel() {
   return (
     <section className="video-panel glass">
-      <div className="section-title"><Smartphone size={18} /><span>반영 기준 영상/문서</span></div>
-      {videos.map((video) => (
-        <a key={video.id} href={`https://www.youtube.com/watch?v=${video.id}`} target="_blank" rel="noreferrer">
-          <span>{video.tag}</span>
-          <strong>{video.title}</strong>
-        </a>
-      ))}
-      {referenceLinks.map((link) => (
-        <a key={link.href} href={link.href} target="_blank" rel="noreferrer">
-          <span>{link.tag}</span>
-          <strong>{link.title}</strong>
-        </a>
-      ))}
+      <div className="section-title"><Smartphone size={18} /><span>참고 자료</span></div>
+      <div className="reference-grid">
+        <div>
+          <strong>Video Demos</strong>
+          {videos.map((video) => (
+            <a key={video.id} href={`https://www.youtube.com/watch?v=${video.id}`} target="_blank" rel="noreferrer">
+              <span>{video.tag}</span>
+              <b>{video.title}</b>
+            </a>
+          ))}
+        </div>
+        <div>
+          <strong>Source / Docs</strong>
+          {referenceLinks.map((link) => (
+            <a key={link.href} href={link.href} target="_blank" rel="noreferrer">
+              <span>{link.tag}</span>
+              <b>{link.title}</b>
+            </a>
+          ))}
+        </div>
+      </div>
     </section>
   );
 }
@@ -760,9 +824,10 @@ export default function App() {
           <p>CEO가 명령하면 AI 직원들이 자리에서 일하고, CEO 방으로 이동해 보고하고, Telegram 승인을 기다리는 1인 기업 운영 화면입니다.</p>
         </div>
         <div className="hero-actions">
-          <span><CloudOff size={16} /> Local-first sandbox</span>
-          <span><GitBranch size={16} /> 승인 전 push 잠금</span>
-          <span><Settings2 size={16} /> 직원별 모델 선택</span>
+          <span className="hero-live"><Radio size={16} /> 24시간 업무 ON</span>
+          <span><Clock size={16} /> 데일리 브리핑 09:00</span>
+          <span><GitBranch size={16} /> Auto-Git Sync 승인 대기</span>
+          <span><Settings2 size={16} /> 직원별 모델·스킬 선택</span>
         </div>
       </header>
 
@@ -770,10 +835,9 @@ export default function App() {
         <div className="left-col">
           <Office activeAgent={activeAgent} plan={plan} selectAgent={setActiveAgent} />
           <CommandCenter prompt={prompt} plan={plan} setPrompt={setPrompt} runPlan={runPlan} applyRecommendedToAll={applyRecommendedToAll} />
-          <HermesDesktopOpsPanel plan={plan} skillSettings={skillSettings} activeAgent={activeAgent} selectAgent={setActiveAgent} />
-          <TaskBoard plan={plan} selectAgent={setActiveAgent} />
+          <ConnectAiOpsPanel plan={plan} skillSettings={skillSettings} activeAgent={activeAgent} selectAgent={setActiveAgent} />
         </div>
-        <div className="right-col">
+        <div className="right-col agent-inspector">
           <ProfilePanel
             agent={selected}
             model={modelSettings[activeAgent]}
@@ -783,6 +847,12 @@ export default function App() {
             onSkillsChange={updateSkills}
             onRecommendSkills={applyRecommendedSkills}
           />
+        </div>
+        <div className="workbench-grid">
+          <TaskBoard plan={plan} selectAgent={setActiveAgent} />
+          <Reports plan={plan} />
+          <ApprovalPanel approvals={plan.approvals} decisions={approvalDecisions} respondApproval={(id, status) => setApprovalDecisions((prev) => ({ ...prev, [id]: status }))} />
+          <BrainPanel plan={plan} />
           <ModelRoutingPanel
             activeAgent={activeAgent}
             modelSettings={modelSettings}
@@ -791,10 +861,7 @@ export default function App() {
             onModelChange={updateModel}
             onRecommendSkills={applyRecommendedSkills}
           />
-          <ApprovalPanel approvals={plan.approvals} decisions={approvalDecisions} respondApproval={(id, status) => setApprovalDecisions((prev) => ({ ...prev, [id]: status }))} />
-          <BrainPanel plan={plan} />
           <VideoPanel />
-          <Reports plan={plan} />
         </div>
       </main>
     </div>

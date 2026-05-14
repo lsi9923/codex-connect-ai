@@ -22,9 +22,14 @@ assert(simulatorTs.includes('approvalItems'), '승인 대기함 안전장치가 
 assert(simulatorTs.includes('00_Raw') && simulatorTs.includes('10_Wiki') && simulatorTs.includes('20_Meta'), 'P-Reinforce 폴더 구조가 필요합니다.');
 assert(skillCatalogTs.includes('localSkillCatalog') && skillCatalogTs.includes('recommendSkillsForAgent'), '로컬 스킬 추천 카탈로그가 필요합니다.');
 assert(appTsx.includes('SkillEditor') && appTsx.includes('전 직원 추천 스킬 붙이기'), '직원별 스킬 편집/추천 UI가 필요합니다.');
-assert(appTsx.includes('HermesDesktopOpsPanel') && appTsx.includes('Closed Learning Loop'), 'Hermes Desktop식 운영 레이어가 필요합니다.');
+assert(appTsx.includes('ConnectAiOpsPanel') && appTsx.includes('Closed Learning Loop'), 'Connect AI/Hermes 운영 레이어가 필요합니다.');
+assert(appTsx.includes('24시간 업무 ON') && appTsx.includes('connectAiLab.autoCycleEnabled'), '24시간 업무 ON 운영 신호가 필요합니다.');
+assert(appTsx.includes('https://github.com/lsi9923/connect-ai'), 'lsi9923/connect-ai 원본 참고 링크가 필요합니다.');
+assert(appTsx.includes('workbench-grid') && appTsx.includes('agent-inspector'), '메인 무대 아래 작업/로그/참고 정렬과 오른쪽 에이전트 편집 전용 레이아웃이 필요합니다.');
 assert(!appTsx.includes('title={`${agent.name}'), '브라우저 기본 title 툴팁 팝업은 제거되어야 합니다.');
 assert(appTsx.includes('OfficeStage3D'), 'Three.js 3D 사무실 무대가 앱에 연결되어야 합니다.');
 assert(officeStageTsx.includes("from 'three'") && officeStageTsx.includes('render_game_to_text') && officeStageTsx.includes('advanceTime'), '3D 게임 무대는 Three.js와 테스트 훅을 제공해야 합니다.');
 assert(officeStageTsx.includes('makeSystemTower') && officeStageTsx.includes('hermesSystems'), '3D 무대에는 Hermes memory/skill/gateway/scheduler 시스템 오브젝트가 필요합니다.');
-console.log('OK: Connect AI 10 agents + P-Reinforce + Hermes Desktop 3D ops verified.');
+assert(officeStageTsx.includes('yawToward') && officeStageTsx.includes('facingYaw') && !officeStageTsx.includes('current.group.lookAt'), '이동 중 에이전트는 lookAt 대신 yaw 기반 방향 계산을 써야 합니다.');
+assert(officeStageTsx.includes('autoCycle') && officeStageTsx.includes('sourceRepos') && officeStageTsx.includes('connectAiLab.autoCycleEnabled'), '3D stage payload에 운영 상태와 원본 저장소 정보가 필요합니다.');
+console.log('OK: Connect AI 10 agents + P-Reinforce + 24h ops + 3D yaw movement verified.');

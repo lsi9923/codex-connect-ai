@@ -10,6 +10,7 @@ type AgentSceneItem = {
   desk: THREE.Mesh;
   statusLight: THREE.Mesh;
   feet: THREE.Mesh[];
+  facingYaw: number;
 };
 
 declare global {
@@ -22,6 +23,15 @@ declare global {
 function worldFromDesk(id: AgentId) {
   const desk = AGENTS[id].desk;
   return new THREE.Vector3((desk.x - 50) * 0.18, 0, (desk.y - 50) * 0.13);
+}
+
+function yawToward(from: THREE.Vector3, to: THREE.Vector3) {
+  return Math.atan2(to.x - from.x, to.z - from.z);
+}
+
+function setFacingYaw(item: AgentSceneItem, target: THREE.Vector3) {
+  item.facingYaw = yawToward(item.group.position, target);
+  item.group.rotation.y = item.facingYaw;
 }
 
 function material(color: string, roughness = 0.64) {
@@ -46,6 +56,13 @@ function makeBlockAgent(agentId: AgentId) {
   chest.position.set(0, 0.94, 0.02);
   group.add(chest);
 
+  const profileScreen = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.34, 0.21),
+    new THREE.MeshBasicMaterial({ map: makeAgentCardTexture(agentId), transparent: true, toneMapped: false }),
+  );
+  profileScreen.position.set(0, 0.95, 0.208);
+  group.add(profileScreen);
+
   const head = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.42, 0.46), material('#f8d7b1', 0.62));
   head.position.y = 1.43;
   group.add(head);
@@ -59,7 +76,11 @@ function makeBlockAgent(agentId: AgentId) {
   eyeA.position.set(-0.1, 1.47, 0.24);
   const eyeB = eyeA.clone();
   eyeB.position.x = 0.1;
-  group.add(eyeA, eyeB);
+  const nose = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.06, 0.035), material('#efb98e', 0.58));
+  nose.position.set(0, 1.405, 0.255);
+  const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.025, 0.024), material('#7f1d1d', 0.55));
+  mouth.position.set(0, 1.34, 0.254);
+  group.add(eyeA, eyeB, nose, mouth);
 
   const armMaterial = material(color, 0.55);
   const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.55, 0.12), armMaterial);
@@ -77,7 +98,14 @@ function makeBlockAgent(agentId: AgentId) {
 
   const badge = new THREE.Mesh(new THREE.SphereGeometry(0.1, 16, 16), material('#22c55e', 0.42));
   badge.position.set(0.24, 1.2, 0.22);
-  group.add(badge);
+  const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.32, 8), material('#94a3b8', 0.38));
+  antenna.position.set(0.22, 1.9, -0.02);
+  const antennaLight = new THREE.Mesh(
+    new THREE.SphereGeometry(0.055, 12, 12),
+    new THREE.MeshBasicMaterial({ color: '#86efac' }),
+  );
+  antennaLight.position.set(0.22, 2.08, -0.02);
+  group.add(badge, antenna, antennaLight);
 
   return { group, feet, badge };
 }
@@ -111,6 +139,40 @@ function makeLabelTexture(text: string, color: string) {
   ctx.font = 'bold 30px Segoe UI, sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText(text, 128, 58);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+function makeAgentCardTexture(agentId: AgentId) {
+  const agent = AGENTS[agentId];
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 160;
+  const ctx = canvas.getContext('2d')!;
+  const gradient = ctx.createLinearGradient(0, 0, 256, 160);
+  gradient.addColorStop(0, '#020617');
+  gradient.addColorStop(0.52, agent.color === '#F8FAFC' ? '#1d4ed8' : agent.color);
+  gradient.addColorStop(1, '#111827');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = 'rgba(255,255,255,.08)';
+  ctx.fillRect(0, 0, canvas.width, 42);
+  ctx.strokeStyle = 'rgba(255,255,255,.36)';
+  ctx.lineWidth = 5;
+  ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8);
+  ctx.fillStyle = '#e5eefc';
+  ctx.font = 'bold 56px Segoe UI Emoji, Segoe UI, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(agent.emoji, 22, 112);
+  ctx.font = 'bold 28px Segoe UI, sans-serif';
+  ctx.fillText(agent.name, 96, 80);
+  ctx.font = '15px Segoe UI, sans-serif';
+  ctx.fillStyle = '#cbd5e1';
+  ctx.fillText(agent.role.slice(0, 22), 96, 108);
+  ctx.fillStyle = '#bbf7d0';
+  ctx.font = 'bold 13px Segoe UI, sans-serif';
+  ctx.fillText('profile screen linked', 96, 132);
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
@@ -185,6 +247,28 @@ function setupScene(container: HTMLDivElement) {
   const rightWall = leftWall.clone();
   rightWall.position.x = 9.1;
   scene.add(backWall, leftWall, rightWall);
+
+  const windowMaterial = new THREE.MeshBasicMaterial({ color: '#38bdf8', transparent: true, opacity: 0.32 });
+  [-5.4, -3.8, 3.8, 5.4].forEach((x) => {
+    const officeWindow = new THREE.Mesh(new THREE.BoxGeometry(1.05, 1.35, 0.035), windowMaterial);
+    officeWindow.position.set(x, 2.45, -6.42);
+    scene.add(officeWindow);
+  });
+
+  const signTexture = makeLabelTexture('24H OPS ON', '#86efac');
+  const opsSign = new THREE.Sprite(new THREE.SpriteMaterial({ map: signTexture, transparent: true, opacity: 0.94 }));
+  opsSign.scale.set(2.1, 0.78, 1);
+  opsSign.position.set(0, 3.3, -6.28);
+  scene.add(opsSign);
+
+  [-4.5, 0, 4.5].forEach((x, idx) => {
+    const lightBar = new THREE.Mesh(
+      new THREE.BoxGeometry(2.2, 0.045, 0.08),
+      new THREE.MeshBasicMaterial({ color: idx === 1 ? '#86efac' : '#7dd3fc', transparent: true, opacity: 0.78 }),
+    );
+    lightBar.position.set(x, 3.95, -2.4 + idx * 1.4);
+    scene.add(lightBar);
+  });
 
   const ceoTable = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.45, 0.42, 32), material('#1d4ed8', 0.48));
   ceoTable.position.set(0, 0.34, 0);
@@ -271,13 +355,14 @@ export function OfficeStage3D({
       const home = worldFromDesk(id);
       const deskGroup = makeDesk(id);
       deskGroup.position.copy(home);
-      deskGroup.rotation.y = Math.atan2(-home.x, -home.z);
+      deskGroup.rotation.y = yawToward(home, new THREE.Vector3(0, 0, 0));
       scene.add(deskGroup);
 
       const deskMesh = deskGroup.children[0] as THREE.Mesh;
       const { group, feet, badge } = makeBlockAgent(id);
       group.position.set(home.x, 0, home.z + 0.78);
-      group.rotation.y = Math.atan2(-home.x, -home.z);
+      const facingYaw = yawToward(group.position, new THREE.Vector3(0, 0, 0));
+      group.rotation.y = facingYaw;
       group.traverse((object) => {
         if (object instanceof THREE.Mesh) object.castShadow = true;
       });
@@ -289,7 +374,7 @@ export function OfficeStage3D({
       label.position.set(0, 2.15, 0);
       group.add(label);
 
-      agents.set(id, { id, group, home: group.position.clone(), desk: deskMesh, statusLight: badge, feet });
+      agents.set(id, { id, group, home: group.position.clone(), desk: deskMesh, statusLight: badge, feet, facingYaw });
     });
 
     const ceoAgent = makeBlockAgent('ceo');
@@ -337,7 +422,7 @@ export function OfficeStage3D({
         const home = item.home;
         const idleBob = Math.sin(time * 2.2 + home.x) * 0.045;
         item.group.position.set(home.x, idleBob, home.z);
-        item.group.rotation.y = Math.atan2(-home.x, -home.z);
+        setFacingYaw(item, ceoPoint);
         item.group.scale.setScalar(id === activeAgentRef.current ? 1.13 : 1);
         item.statusLight.scale.setScalar(task?.status === 'approval' ? 1.55 : task?.status === 'running' ? 1.25 : 1);
         const lampMaterial = item.statusLight.material as THREE.MeshStandardMaterial;
@@ -357,12 +442,12 @@ export function OfficeStage3D({
         const routePoint = hold
           ? ceoPoint
           : phaseTime < 0.68
-            ? start.lerp(ceoPoint, easedGo)
+            ? start.clone().lerp(ceoPoint, easedGo)
             : ceoPoint.clone().lerp(start, easedBack);
         routePoint.y = Math.sin(time * 11) * 0.05;
         current.group.position.copy(routePoint);
         current.group.scale.setScalar(1.22);
-        current.group.lookAt(phaseTime < 0.68 ? ceoPoint : start);
+        setFacingYaw(current, phaseTime < 0.68 ? ceoPoint : start);
         current.feet.forEach((foot, idx) => {
           foot.rotation.x = Math.sin(time * 14 + idx * Math.PI) * 0.5;
         });
@@ -394,14 +479,30 @@ export function OfficeStage3D({
               z: Number(activeItem.group.position.z.toFixed(2)),
             }
           : null,
+        facingYaw: activeItem ? Number(activeItem.facingYaw.toFixed(3)) : null,
         movingAgents: Array.from(agents.values()).map((item) => ({
           id: item.id,
           x: Number(item.group.position.x.toFixed(2)),
           z: Number(item.group.position.z.toFixed(2)),
+          facingYaw: Number(item.facingYaw.toFixed(3)),
         })),
         runId: planRef.current.runId,
         taskCount: planRef.current.tasks.length,
+        autoCycle: {
+          enabled: true,
+          label: '24시간 업무 ON',
+          setting: 'connectAiLab.autoCycleEnabled',
+          dailyBriefingTime: '09:00',
+          secretaryBridgeMode: 'output_only',
+          autoGitSync: 'approval-gated',
+        },
         hermesSystems: ['memory', 'skill-forge', 'gateway', 'scheduler'],
+        sourceRepos: ['https://github.com/lsi9923/connect-ai', 'https://github.com/fathah/hermes-desktop'],
+        orientation: {
+          localForward: '+Z',
+          method: 'manual-yaw',
+          activeAgentDoesNotUseLookAt: true,
+        },
       };
       return JSON.stringify(payload);
     };

@@ -1,7 +1,7 @@
 {
   "aiSlopCleaner": {
     "status": "passed",
-    "evidence": "Scoped scan of src, index.html, scripts, package.json, vite.config.ts, tsconfig.json, and .gitignore found no masking fallback/TODO/hack signals. The only console.log is the test success line in scripts/check-agents.mjs. Follow-up pass also removed native agent title tooltips and verified inline skill editing."
+    "evidence": "Scoped scan of src, scripts, package/config, index.html, and .omx found no task-marker, masking fallback label, or native title tooltip regression. Remaining console.log is only the test success line in scripts/check-agents.mjs; the custom skill input now uses aria-label instead of browser hint text."
   },
   "verification": {
     "status": "passed",
@@ -10,7 +10,7 @@
       "npm run build",
       "Invoke-WebRequest -UseBasicParsing -Uri http://127.0.0.1:5199/"
     ],
-    "evidence": "npm test passed, Vite production build passed, and the running dev server returned HTTP 200. Playwright/Chrome smoke verified task distribution, model selection, approval buttons, desk terminals, skill editor, recommendation attach, direct custom skill add, no native title popups, zero console errors, a nonblank Three.js canvas, no old .agent-node cards, actual active-agent position movement after advancing the simulation clock, and the Hermes Desktop ops panel with slash commands and closed learning loop."
+    "evidence": "npm test and npm run build passed after the detail fix. Dev server returned HTTP 200. Chrome DevTools verified 24시간 업무 ON, connectAiLab.autoCycleEnabled, dailyBriefingTime 09:00, secretaryBridgeMode output_only, Auto-Git Sync approval state, lsi9923/connect-ai link, right sidebar limited to one profile/skill editor, nonblank Three.js canvas, active-agent movement after advanceTime(2400), manual-yaw facing payload, no console error/warn/issue, no unnamed fields, no native title popups, and no mobile horizontal overflow."
   },
   "codeReview": {
     "recommendation": "APPROVE",
@@ -19,11 +19,15 @@
   },
   "gameMotionUpgrade": {
     "status": "passed",
-    "evidence": "Added src/OfficeStage3D.tsx using Three.js with LEGO/block-style agents, desks, CEO room, floor grid, route line, moving work packet, idle bobbing, active desk-to-CEO-to-desk movement, raycast agent selection, deterministic render_game_to_text/advanceTime browser hooks, and Hermes MEMORY/SKILLS/GATEWAY/CRON towers around the CEO learning loop. Screenshots saved under D:\\connect-ai-office-upgrade-work."
+    "evidence": "src/OfficeStage3D.tsx now uses manual yawToward/setFacingYaw for moving agents instead of current.group.lookAt, keeps local front as +Z, exposes facingYaw/autoCycle/sourceRepos/orientation in render_game_to_text, adds profile mini-screen textures, more detailed block agents, wall windows, 24H OPS sign, and light bars. Screenshots saved under D:\\connect-ai-office-upgrade-work\\connect-ai-detail-fix-desktop.png and D:\\connect-ai-office-upgrade-work\\connect-ai-detail-fix-mobile.png."
   },
   "hermesDesktopReferenceUpgrade": {
     "status": "passed",
-    "evidence": "Cloned https://github.com/fathah/hermes-desktop into D:\\connect-ai-office-upgrade-work\\refs\\hermes-desktop and used README/source references for visible UI concepts: profiles, memory, skills, toolsets, schedules, gateways, slash commands, and Claw3d/Hermes Office. Browser verification confirmed the new Hermes Desktop ops panel, slash command rail, nonblank 3D canvas, moving active agent, and hermesSystems payload."
+    "evidence": "Kept Hermes Desktop-inspired profiles, memory, skills, schedules, gateways, slash commands, and 3D system towers, then added lsi9923/connect-ai original signals: P-Reinforce, Agent University, Auto-Git Sync, Dynamic Model Detection, 24h autonomous cycle, daily briefing, secretary bridge mode, and source/docs references."
+  },
+  "connectAiDetailFix": {
+    "status": "passed",
+    "evidence": "Implemented requested detail-only pass: 24시간 업무 ON restored, lsi9923/connect-ai source added, 3D office background improved with original map asset reference, agent profile images shown on desk terminals, right sidebar reduced to selected agent model/skill editing, and desktop/mobile order verified as office -> ops -> editor -> reports/reference."
   },
   "ultragoalCheckpoint": {
     "status": "not_checkpointed",
