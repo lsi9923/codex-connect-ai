@@ -19,7 +19,6 @@ import {
   Play,
   Plus,
   Radio,
-  Route,
   Send,
   Settings2,
   ShieldCheck,
@@ -332,6 +331,7 @@ function Office({
           const agent = AGENTS[task.agent];
           const bubbleLayout = speechBubbleLayouts[task.agent] || { dx: 0, dy: -128, anchor: 'above' };
           const isEngineAgent = task.agent === engine.agent;
+          const speechLine = isEngineAgent ? `${phaseLabels[engine.phase]} · ${taskSpeechLine(task)}` : taskSpeechLine(task);
           return (
             <button
               type="button"
@@ -344,7 +344,7 @@ function Office({
                 ['--terminal-y' as string]: `${bubbleLayout.dy}px`,
               }}
               onClick={() => selectAgent(task.agent)}
-              aria-label={`${agent.name} 업무 말풍선: ${task.title} ${taskSpeechLine(task)} ${task.output}`}
+              aria-label={`${agent.name} 통합 업무 말풍선: ${task.title} ${speechLine} ${task.output}`}
             >
               <span className="desk-terminal-head">
                 {agent.profileImage ? <img src={agent.profileImage} alt="" /> : <em>{agent.emoji}</em>}
@@ -352,7 +352,7 @@ function Office({
                 <small>{taskStatusLabel[task.status]} · {modelLabel(task.model)}</small>
               </span>
               <strong className="desk-terminal-task">{task.title}</strong>
-              <span className="desk-terminal-says"><MessageSquareText size={12} /> {taskSpeechLine(task)}</span>
+              <span className="desk-terminal-says"><MessageSquareText size={12} /> {speechLine}</span>
               <span className="desk-terminal-output">{task.output}</span>
               <i style={{ width: `${task.progress}%` }} />
             </button>
@@ -380,18 +380,6 @@ function Office({
           <span>모델: {modelLabel(currentTask?.model || currentAgent.defaultModel)}</span>
           <span>동선: 책상 → 복도 → CEO 방 → 자리</span>
         </div>
-        <div className="route-director">
-          <Route size={15} />
-          <strong>{currentAgent.name}</strong>
-          <span>{phaseLabels[engine.phase]}</span>
-        </div>
-
-        <div className="work-packet packet-a">전략</div>
-        <div className="work-packet packet-b">분석</div>
-        <div className="work-packet packet-c">보고</div>
-        <div className="work-packet packet-d">코드</div>
-        <div className="work-packet packet-e">승인</div>
-
         <div className="office-progress">
           <div className="progress-title"><Workflow size={14} /> 업무 파이프라인</div>
           {plan.pipeline.map((step) => (

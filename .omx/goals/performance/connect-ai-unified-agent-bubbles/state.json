@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "workflow": "performance-goal",
+  "slug": "connect-ai-unified-agent-bubbles",
+  "objective": "Unify duplicated agent speech bubbles into one visible bubble per employee and reduce 3D overlay texture churn",
+  "status": "validation_passed",
+  "createdAt": "2026-05-14T11:09:50.126Z",
+  "updatedAt": "2026-05-14T11:16:16.092Z",
+  "evaluator": {
+    "command": "npm test && npm run build",
+    "contract": "PASS when tests/build pass, browser shows 9 unified employee speech bubbles, 3D payload reports 9 speech bubble states, and no console errors"
+  },
+  "artifactPaths": {
+    "state": ".omx/goals/performance/connect-ai-unified-agent-bubbles/state.json",
+    "ledger": ".omx/goals/performance/connect-ai-unified-agent-bubbles/ledger.jsonl",
+    "evaluator": ".omx/goals/performance/connect-ai-unified-agent-bubbles/evaluator.md"
+  },
+  "startedAt": "2026-05-14T11:10:01.455Z",
+  "lastValidation": {
+    "status": "pass",
+    "evidence": "npm test passed; npm run build passed; browser verified 9 unified .desk-terminal bubbles, 0 .work-packet, no .route-director, 3D payload speechBubbles=9, no console errors; screenshot D:\\connect-ai-office-upgrade-work\\connect-ai-unified-bubbles.png",
+    "recordedAt": "2026-05-14T11:16:16.092Z"
+  }
+}

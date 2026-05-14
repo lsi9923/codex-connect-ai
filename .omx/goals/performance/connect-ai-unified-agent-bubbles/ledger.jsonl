@@ -1,0 +1,3 @@
+{"ts":"2026-05-14T11:09:50.126Z","event":"workflow_created","status":"created","message":"Performance goal created with evaluator contract"}
+{"ts":"2026-05-14T11:10:01.455Z","event":"goal_handoff_emitted","status":"in_progress","message":"Emitted model-facing Codex goal handoff; shell command did not mutate Codex goal state"}
+{"ts":"2026-05-14T11:16:16.092Z","event":"validation_passed","status":"validation_passed","validationStatus":"pass","evidence":"npm test passed; npm run build passed; browser verified 9 unified .desk-terminal bubbles, 0 .work-packet, no .route-director, 3D payload speechBubbles=9, no console errors; screenshot D:\\connect-ai-office-upgrade-work\\connect-ai-unified-bubbles.png"}

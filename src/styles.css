@@ -111,7 +111,6 @@ button { color: inherit; }
 .beam-3 { stroke: rgba(132, 204, 22, .4); animation-duration: 5.8s; }
 .beam-4 { stroke: rgba(167, 139, 250, .4); animation-duration: 3.9s; }
 @keyframes beamMove { to { stroke-dashoffset: -40; } }
-.work-packet { position: absolute; z-index: 7; padding: 7px 10px; border-radius: 8px; background: #0ea5e9; color: white; font-weight: 900; font-size: 12px; box-shadow: 0 0 24px rgba(56,189,248,.75); }
 .desk-terminal { position: absolute; z-index: 13; width: 218px; min-height: 118px; transform: translate(-50%, var(--terminal-y, -128px)); display: grid; gap: 6px; text-align: left; border: 1px solid color-mix(in srgb, var(--agent-color), transparent 42%); border-radius: 8px; padding: 10px 11px 11px; color: #e0f2fe; background: linear-gradient(180deg, rgba(2,6,23,.9), rgba(15,23,42,.76)); box-shadow: 0 18px 36px rgba(0,0,0,.34), 0 0 26px color-mix(in srgb, var(--agent-color), transparent 76%); backdrop-filter: blur(10px); cursor: pointer; transition: transform .22s ease, border-color .22s ease, opacity .22s ease; }
 .desk-terminal::after { content: ''; position: absolute; left: 50%; width: 14px; height: 14px; background: rgba(2,6,23,.9); border: solid color-mix(in srgb, var(--agent-color), transparent 42%); transform: translateX(-50%) rotate(45deg); }
 .desk-terminal.above::after { bottom: -8px; border-width: 0 1px 1px 0; }
@@ -142,23 +141,10 @@ button { color: inherit; }
 .game-state-panel { position: absolute; z-index: 9; left: 36px; top: 36%; width: 252px; display: grid; gap: 7px; padding: 13px; border: 1px solid rgba(34,211,238,.28); border-radius: 8px; background: rgba(2,6,23,.72); color: #e0f2fe; box-shadow: 0 16px 34px rgba(0,0,0,.28), 0 0 30px rgba(14,165,233,.14); backdrop-filter: blur(10px); }
 .game-state-panel b { display: inline-flex; align-items: center; gap: 6px; color: #67e8f9; font-size: 12px; }
 .game-state-panel span { font-size: 11px; color: #cbd5e1; line-height: 1.35; }
-.route-director { position: absolute; z-index: 10; left: 50%; top: 30%; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 8px; padding: 8px 11px; border-radius: 999px; border: 1px solid rgba(125,211,252,.28); color: #e0f2fe; background: rgba(2,6,23,.68); box-shadow: 0 14px 30px rgba(0,0,0,.24), 0 0 26px rgba(14,165,233,.18); backdrop-filter: blur(10px); font-size: 12px; }
-.route-director svg { color: #67e8f9; }
-.route-director strong { color: #bbf7d0; }
 .live-status-panel b { color: #bbf7d0; font-size: 12px; }
 .live-status-panel span { position: relative; padding-left: 14px; color: #d1fae5; font-size: 11px; }
 .live-status-panel span::before { content: ''; position: absolute; left: 0; top: 6px; width: 6px; height: 6px; border-radius: 999px; background: #22c55e; box-shadow: 0 0 10px #22c55e; }
 @keyframes progressPulse { 50% { filter: brightness(1.25); transform: translateX(2px); } }
-.packet-a { animation: packetA 8s linear infinite; }
-.packet-b { animation: packetB 9.5s linear infinite; background: #a855f7; }
-.packet-c { animation: packetC 7.4s linear infinite; background: #22c55e; }
-.packet-d { animation: packetD 8.8s linear infinite; background: #06b6d4; }
-.packet-e { animation: packetE 10.2s linear infinite; background: #f59e0b; }
-@keyframes packetA { 0% { left: 50%; top: 50%; } 50% { left: 18%; top: 20%; } 100% { left: 50%; top: 50%; } }
-@keyframes packetB { 0% { left: 50%; top: 50%; } 50% { left: 82%; top: 20%; } 100% { left: 50%; top: 50%; } }
-@keyframes packetC { 0% { left: 50%; top: 50%; } 50% { left: 32%; top: 82%; } 100% { left: 50%; top: 50%; } }
-@keyframes packetD { 0% { left: 50%; top: 50%; } 50% { left: 78%; top: 70%; } 100% { left: 50%; top: 50%; } }
-@keyframes packetE { 0% { left: 50%; top: 50%; } 50% { left: 16%; top: 72%; } 100% { left: 50%; top: 50%; } }
 .profile-panel, .command-center, .task-board, .brain-panel, .approval-panel, .video-panel, .reports, .routing-panel, .hermes-desktop-panel { padding: 18px; }
 .workbench-grid { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(320px, .82fr) minmax(320px, .82fr); gap: 18px; align-items: start; }
 .workbench-grid .task-board { grid-column: span 2; }
@@ -347,7 +333,7 @@ select:focus, textarea:focus { border-color: rgba(125,211,252,.58); box-shadow: 
   .command-grid, .task-grid, .right-col, .hermes-ops-grid, .workbench-grid, .ops-signal-strip, .ops-control-grid, .ops-control-console, .telegram-identity, .reference-grid { grid-template-columns: 1fr; }
   .workbench-grid .task-board, .workbench-grid .reports, .workbench-grid .video-panel { grid-column: auto; }
   .room-card { width: 150px; min-height: 58px; padding: 8px; }
-  .room-card span, .office-progress, .live-status-panel, .game-state-panel, .route-director { display: none; }
+  .room-card span, .office-progress, .live-status-panel, .game-state-panel { display: none; }
   .desk-terminal { width: 156px; min-height: 88px; gap: 4px; padding: 8px; }
   .desk-terminal-head { grid-template-columns: 22px minmax(0,1fr); }
   .desk-terminal-head img, .desk-terminal-head em { width: 22px; height: 22px; }
