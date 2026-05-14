@@ -259,8 +259,8 @@ const DESK_POSITIONS: Partial<Record<AgentId, { x: number; y: number }>> = {
   business: { x: 43, y: 58 },
   secretary: { x: 62, y: 58 },
   editor: { x: 81, y: 58 },
-  writer: { x: 42, y: 83 },
-  researcher: { x: 76, y: 83 },
+  writer: { x: 78, y: 43 },
+  researcher: { x: 88, y: 31 },
   ceo: { x: 54, y: 82 },
 };
 

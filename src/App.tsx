@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Dispatch, SetStateAction } from 'react';
+import type { CSSProperties, Dispatch, SetStateAction } from 'react';
 import {
   BadgeCheck,
   Brain,
@@ -103,6 +103,46 @@ const taskStatusLabel: Record<AgentTask['status'], string> = {
   done: '완료',
   approval: '승인 대기',
 };
+
+type TaskOpsState = 'done' | 'running' | 'waiting';
+
+function clampPercent(value: number) {
+  return Math.max(8, Math.min(100, Math.round(value)));
+}
+
+function taskOpsRows(task: AgentTask) {
+  const done = task.status === 'done';
+  const waiting = task.status === 'queued';
+  const approval = task.status === 'approval';
+  const activeState: TaskOpsState = done ? 'done' : waiting ? 'waiting' : 'running';
+
+  return [
+    {
+      label: '업무 관찰',
+      value: clampPercent(task.progress),
+      state: activeState,
+      detail: waiting ? '대기열에서 입력과 도구를 확인 중' : `${task.title} 진행률과 산출물을 감시 중`,
+    },
+    {
+      label: '장기 기억 저장',
+      value: clampPercent(done ? 96 : approval ? 88 : task.progress - 8),
+      state: done || approval ? 'done' as TaskOpsState : activeState,
+      detail: `${task.artifact} 후보로 정리`,
+    },
+    {
+      label: '스킬 개선 제안',
+      value: clampPercent(done ? 88 : waiting ? 31 : task.progress + 16),
+      state: waiting ? 'waiting' as TaskOpsState : activeState,
+      detail: `${task.skills[0]} 흐름을 새 스킬 후보로 평가`,
+    },
+    {
+      label: '예약 실행 대기',
+      value: clampPercent(approval ? 92 : waiting ? 68 : done ? 100 : 57),
+      state: approval || waiting ? 'waiting' as TaskOpsState : activeState,
+      detail: approval ? '승인 후 Telegram/GitHub 게이트 실행' : '다음 24시간 루프에 재투입',
+    },
+  ];
+}
 
 type SpeechBubbleLayout = {
   dx: number;
@@ -936,23 +976,52 @@ function ConnectAiOpsPanel({
 
 function TaskBoard({
   plan,
+  activeAgent,
   selectAgent,
   profileOverrides,
 }: {
   plan: OfficePlan;
+  activeAgent: AgentId;
   selectAgent: (id: AgentId) => void;
   profileOverrides: AgentProfileOverrides;
 }) {
+  const selectedTask = plan.tasks.find((task) => task.agent === activeAgent) || plan.tasks[0];
+  const selectedAgent = AGENTS[selectedTask.agent];
+  const selectedProfile = resolveAgentProfile(selectedAgent, profileOverrides);
+  const selectedOpsRows = taskOpsRows(selectedTask);
+
   return (
     <section className="task-board glass">
       <div className="section-title"><FolderKanban size={18} /><span>직원별 작업 카드</span></div>
       <p className="ceo-brief">{plan.brief}</p>
+      <div className="task-ops-panel" style={{ '--agent-color': selectedAgent.color } as CSSProperties}>
+        <span className="task-ops-avatar">
+          {selectedProfile.profileImage ? <img src={selectedProfile.profileImage} alt="" /> : <em>{selectedAgent.emoji}</em>}
+        </span>
+        <div className="task-ops-summary">
+          <b>{selectedProfile.name} 업무 운영 루프</b>
+          <small>{selectedTask.title} · {taskStatusLabel[selectedTask.status]} · {modelLabel(selectedTask.model)}</small>
+          <span><Database size={13} /> {selectedTask.artifact}</span>
+        </div>
+        <div className="task-ops-loop">
+          {selectedOpsRows.map((row) => (
+            <div className={`task-ops-row ${row.state}`} key={row.label}>
+              <span>{row.label}</span>
+              <i><b style={{ width: `${row.value}%` }} /></i>
+              <em>{row.value}%</em>
+              <small>{row.detail}</small>
+            </div>
+          ))}
+        </div>
+      </div>
       <div className="task-grid">
         {plan.tasks.map((task) => {
           const agent = AGENTS[task.agent];
           const profile = resolveAgentProfile(agent, profileOverrides);
+          const opsRows = taskOpsRows(task);
+          const selected = selectedTask.id === task.id;
           return (
-            <button key={task.id} className={`task-card ${task.status}`} onClick={() => selectAgent(task.agent)} style={{ borderColor: agent.color }}>
+            <button key={task.id} className={`task-card ${task.status} ${selected ? 'selected' : ''}`} onClick={() => selectAgent(task.agent)} style={{ borderColor: agent.color, '--agent-color': agent.color } as CSSProperties}>
               <span className="task-agent-profile">
                 <span className="task-avatar" style={{ borderColor: agent.color }}>
                   {profile.profileImage ? <img src={profile.profileImage} alt="" /> : <em>{agent.emoji}</em>}
@@ -965,6 +1034,13 @@ function TaskBoard({
               <strong>{task.title}</strong>
               <small>{task.brief}</small>
               <div className="task-progress"><i style={{ width: `${task.progress}%` }} /></div>
+              <span className="task-op-chips">
+                {opsRows.map((row) => (
+                  <span className={`task-op-chip ${row.state}`} key={row.label}>
+                    {row.label}<b>{row.value}%</b>
+                  </span>
+                ))}
+              </span>
               <span className="task-model"><Cpu size={13} /> {modelLabel(task.model)}</span>
               <span className="task-skills"><Zap size={13} /> {task.skills.slice(0, 4).join(' · ')}</span>
               <span className="task-output"><FileText size={13} /> {task.output}</span>
@@ -1254,7 +1330,7 @@ export default function App() {
           />
         </div>
         <div className="workbench-grid">
-          <TaskBoard plan={plan} selectAgent={setActiveAgent} profileOverrides={profileOverrides} />
+          <TaskBoard plan={plan} activeAgent={activeAgent} selectAgent={setActiveAgent} profileOverrides={profileOverrides} />
           <Reports plan={plan} />
           <ApprovalPanel approvals={plan.approvals} decisions={approvalDecisions} respondApproval={(id, status) => setApprovalDecisions((prev) => ({ ...prev, [id]: status }))} />
           <BrainPanel plan={plan} />

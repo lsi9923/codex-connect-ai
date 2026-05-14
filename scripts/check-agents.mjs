@@ -27,6 +27,7 @@ assert(skillCatalogTs.includes('pixel-agent-office-simulator') && skillCatalogTs
 assert(appTsx.includes('SkillEditor') && appTsx.includes('전 직원 추천 스킬 붙이기'), '직원별 스킬 편집/추천 UI가 필요합니다.');
 assert(appTsx.includes('PROFILE_STORAGE_KEY') && appTsx.includes('profileOverrides') && appTsx.includes('profile-edit-grid'), '직원 프로필 이름/사진 편집값은 저장되고 화면 전체에 연결되어야 합니다.');
 assert(appTsx.includes('task-agent-profile') && appTsx.includes('task-avatar') && stylesCss.includes('task-agent-profile'), '직원별 작업 카드에는 프로필 사진과 표시 이름이 보여야 합니다.');
+assert(appTsx.includes('taskOpsRows') && appTsx.includes('업무 관찰') && appTsx.includes('장기 기억 저장') && appTsx.includes('스킬 개선 제안') && appTsx.includes('예약 실행 대기') && stylesCss.includes('task-ops-panel'), '직원별 작업 카드는 클릭한 직원의 업무 관찰/장기 기억/스킬 개선/예약 실행 상태를 보여야 합니다.');
 assert(sangSimTsx.includes('agentProfiles') && sangSimTsx.includes('profileImage: resolveAgentProfile'), '시뮬레이션 디버그 payload도 편집된 직원 이름과 사진을 노출해야 합니다.');
 assert(appTsx.includes('ConnectAiOpsPanel') && appTsx.includes('Closed Learning Loop'), 'Connect AI/Hermes 운영 레이어가 필요합니다.');
 assert(appTsx.includes('defaultConnectAiOpsSettings') && appTsx.includes('autoCycleEnabled: false'), '24시간 업무는 사용자가 켜기 전 대기 상태여야 합니다.');
@@ -42,6 +43,7 @@ assert(appTsx.includes('motionAgent={engine.agent}') && officeStageTsx.includes(
 assert(appTsx.includes('SangOfficeSimulator') && sangSimTsx.includes('https://github.com/lsi9923/sang-ai-office-simulator') && sangSimTsx.includes('processParallel') && sangSimTsx.includes('computeBubbleOffsets') && stylesCss.includes('sang-sim-cover'), 'lsi9923/sang-ai-office-simulator 기반 시뮬레이션을 현재 무대 크기에 맞춰 포함해야 합니다.');
 assert(sangSimTsx.includes('https://connectai-7gxqex9s.manus.space/') && sangSimTsx.includes('7GXqEX9S442FPxx7zqYqED'), 'Manus 공개 프로젝트 식별자와 기준 URL이 시뮬레이션 payload에 있어야 합니다.');
 assert(sangSimTsx.includes('/connect-ai/assets/office_design_2_ceo_room.gif') && stylesCss.includes('aspect-ratio: 512 / 544') && sangSimTsx.includes('/connect-ai/pixel/characters') && sangSimTsx.includes('SPRITE_CONFIG'), 'CEO 방이 분리된 Office_Design_2 픽셀 맵과 스프라이트 자산을 로컬 시뮬레이션에 사용해야 합니다.');
+assert(sangSimTsx.includes("writer: { x: 78, y: 43 }") && sangSimTsx.includes("researcher: { x: 88, y: 31 }"), 'Writer와 Researcher 기본 자리는 CEO 방 밖 일반 업무 구역에 있어야 합니다.');
 assert(sangSimTsx.includes("id: 'editor'") && sangSimTsx.includes("id: 'writer'") && sangSimTsx.includes("id: 'researcher'"), '시뮬레이션 무대도 메인 직원 목록처럼 루나, Writer, Researcher를 포함해야 합니다.');
 assert(sangSimTsx.includes('SCALE: 1.4') && sangSimTsx.includes('IDLE_SPEED: 14') && sangSimTsx.includes('WALK_SPEED: 7') && sangSimTsx.includes('10 + Math.floor(agent.y * 0.1)'), '픽셀 스킬/깃허브 기준 스프라이트 스케일, 프레임 속도, z-index 계산을 따라야 합니다.');
 assert(sangSimTsx.includes('QUICK_CMDS') && sangSimTsx.includes('sang-quick-command') && sangSimTsx.includes('AGENT STATUS') && sangSimTsx.includes('ACTIVITY LOG'), 'Manus형 우측 운영 패널에는 빠른 명령, 직원 상태, 활동 로그가 있어야 합니다.');
