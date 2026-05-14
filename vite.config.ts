@@ -11,6 +11,12 @@ export default defineConfig({
     host: '127.0.0.1',
     port: 5199,
     strictPort: true,
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:5198',
+        changeOrigin: true,
+      },
+    },
   },
   preview: {
     host: '127.0.0.1',

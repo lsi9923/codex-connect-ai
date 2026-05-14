@@ -58,6 +58,7 @@ import {
 import { AgentProfileOverrides, PROFILE_STORAGE_KEY, resolveAgentProfile } from './profileOverrides';
 import { OfficeStage3D } from './OfficeStage3D';
 import { SangOfficeSimulator } from './SangOfficeSimulator';
+import { RuntimeStatus, RuntimeTaskResponse, fallbackRevenueConnectors, fetchRuntimeJson } from './runtime';
 import './styles.css';
 
 const videos = [
@@ -104,71 +105,51 @@ const taskStatusLabel: Record<AgentTask['status'], string> = {
   running: '작업 중',
   done: '완료',
   approval: '승인 대기',
+  failed: '실패',
 };
 
 type TaskOpsState = 'done' | 'running' | 'waiting';
 
 function clampPercent(value: number) {
-  return Math.max(8, Math.min(100, Math.round(value)));
+  return Math.max(0, Math.min(100, Math.round(value)));
 }
 
 function taskOpsRows(task: AgentTask) {
   const done = task.status === 'done';
+  const failed = task.status === 'failed';
   const waiting = task.status === 'queued';
   const approval = task.status === 'approval';
-  const activeState: TaskOpsState = done ? 'done' : waiting ? 'waiting' : 'running';
+  const running = task.status === 'running';
+  const hasMemoryProposal = Boolean(task.memoryProposal);
+  const hasSkillProposal = Boolean(task.skillProposal);
 
   return [
     {
       label: '업무 관찰',
       value: clampPercent(task.progress),
-      state: activeState,
-      detail: waiting ? '대기열에서 입력과 도구를 확인 중' : `${task.title} 진행률과 산출물을 감시 중`,
+      state: done || failed || approval ? 'done' as TaskOpsState : waiting ? 'waiting' as TaskOpsState : 'running' as TaskOpsState,
+      detail: failed ? `실패 로그 저장: ${task.artifact}` : waiting ? '대기열에서 입력과 도구를 확인 중' : `${task.title} 실제 실행 상태를 감시 중`,
     },
     {
       label: '장기 기억 저장',
-      value: clampPercent(done ? 96 : approval ? 88 : task.progress - 8),
-      state: done || approval ? 'done' as TaskOpsState : activeState,
-      detail: `${task.artifact} 후보로 정리`,
+      value: hasMemoryProposal ? 100 : 0,
+      state: hasMemoryProposal ? 'done' as TaskOpsState : running ? 'running' as TaskOpsState : 'waiting' as TaskOpsState,
+      detail: hasMemoryProposal ? `후보 파일: ${task.memoryProposal}` : '아직 MEMORY.md에 적용하지 않음',
     },
     {
       label: '스킬 개선 제안',
-      value: clampPercent(done ? 88 : waiting ? 31 : task.progress + 16),
-      state: waiting ? 'waiting' as TaskOpsState : activeState,
-      detail: `${task.skills[0]} 흐름을 새 스킬 후보로 평가`,
+      value: hasSkillProposal ? 100 : 0,
+      state: hasSkillProposal ? 'done' as TaskOpsState : running ? 'running' as TaskOpsState : 'waiting' as TaskOpsState,
+      detail: hasSkillProposal ? `후보 파일: ${task.skillProposal}` : `${task.skills[0]} 개선 후보 생성 전`,
     },
     {
       label: '예약 실행 대기',
-      value: clampPercent(approval ? 92 : waiting ? 68 : done ? 100 : 57),
-      state: approval || waiting ? 'waiting' as TaskOpsState : activeState,
-      detail: approval ? '승인 후 Telegram/GitHub 게이트 실행' : '다음 24시간 루프에 재투입',
+      value: approval ? 100 : 0,
+      state: approval ? 'waiting' as TaskOpsState : 'waiting' as TaskOpsState,
+      detail: approval ? '승인 후 Telegram/GitHub 게이트 실행' : '사용자가 24시간 업무를 켜야 자동 루프에 들어갑니다',
     },
   ];
 }
-
-type RevenueStreamTone = 'confirmed' | 'pending' | 'projected';
-
-type RevenueStream = {
-  label: string;
-  owner: AgentId;
-  source: string;
-  value: number;
-  target: number;
-  tone: RevenueStreamTone;
-};
-
-const monthlyRevenueTarget = 10_000_000;
-const baseRevenueByAgent: Partial<Record<AgentId, number>> = {
-  youtube: 1_850_000,
-  instagram: 780_000,
-  designer: 620_000,
-  developer: 2_400_000,
-  business: 2_100_000,
-  secretary: 540_000,
-  editor: 430_000,
-  writer: 960_000,
-  researcher: 820_000,
-};
 
 function formatWon(value: number) {
   if (value >= 100_000_000) return `${Math.round(value / 100_000_000).toLocaleString('ko-KR')}억`;
@@ -176,46 +157,19 @@ function formatWon(value: number) {
   return `${Math.round(value).toLocaleString('ko-KR')}원`;
 }
 
-function taskRevenueValue(task: AgentTask) {
-  const base = baseRevenueByAgent[task.agent] || 360_000;
-  const statusMultiplier = task.status === 'done' ? 1 : task.status === 'approval' ? 0.84 : task.status === 'running' ? 0.62 : 0.24;
-  return Math.round((base * statusMultiplier * clampPercent(task.progress)) / 100 / 10_000) * 10_000;
+function formatBytes(value: number) {
+  if (value >= 1024 * 1024) return `${(value / 1024 / 1024).toFixed(1)} MB`;
+  if (value >= 1024) return `${Math.round(value / 1024).toLocaleString('ko-KR')} KB`;
+  return `${value.toLocaleString('ko-KR')} B`;
 }
 
-function planRevenueSnapshot(plan: OfficePlan) {
-  const taskMap = new Map(plan.tasks.map((task) => [task.agent, task]));
-  const makeStream = (label: string, owner: AgentId, source: string, target: number): RevenueStream => {
-    const task = taskMap.get(owner);
-    const value = task ? taskRevenueValue(task) : 0;
-    const tone: RevenueStreamTone = !task
-      ? 'projected'
-      : task.status === 'done'
-        ? 'confirmed'
-        : task.status === 'approval'
-          ? 'pending'
-          : 'projected';
-    return { label, owner, source, value, target, tone };
-  };
-  const streams = [
-    makeStream('YouTube/Adsense', 'youtube', 'YouTube Studio 수익 확인', 3_200_000),
-    makeStream('수익성 웹사이트', 'business', '제휴·콘텐츠 매출 KPI', 2_600_000),
-    makeStream('자동화 개발 납품', 'developer', '웹앱/자동화 산출물', 2_400_000),
-    makeStream('카피·랜딩 전환', 'writer', '랜딩/스크립트 전환 매출', 1_000_000),
-    makeStream('Telegram 보고 상품', 'secretary', '승인형 보고/운영 대행', 800_000),
-  ];
-  const confirmed = streams.filter((stream) => stream.tone === 'confirmed').reduce((sum, stream) => sum + stream.value, 0);
-  const pending = streams.filter((stream) => stream.tone === 'pending').reduce((sum, stream) => sum + stream.value, 0);
-  const projected = streams.reduce((sum, stream) => sum + stream.value, 0);
-  const agentValues = Object.fromEntries(plan.tasks.map((task) => [task.agent, taskRevenueValue(task)])) as Partial<Record<AgentId, number>>;
-  return {
-    streams,
-    confirmed,
-    pending,
-    projected,
-    target: monthlyRevenueTarget,
-    progress: clampPercent((projected / monthlyRevenueTarget) * 100),
-    agentValues,
-  };
+function runtimeStatusLabel(status?: string) {
+  if (status === 'connected') return '연결됨';
+  if (status === 'configured') return '설정됨';
+  if (status === 'missing') return '미연결';
+  if (status === 'disconnected') return '꺼짐';
+  if (status === 'error') return '오류';
+  return '확인 중';
 }
 
 type SpeechBubbleLayout = {
@@ -396,8 +350,14 @@ function connectAiOpsSignals(settings: ConnectAiOpsSettings) {
   ];
 }
 
-function modelLabel(modelId: string) {
-  return modelOptions.find((item) => item.id === modelId)?.label || modelId.split('/').pop() || modelId;
+function runtimeModelOptions(runtimeStatus: RuntimeStatus | null) {
+  const existing = new Set(modelOptions.map((option) => option.id));
+  const live = runtimeStatus?.models.options.filter((option) => !existing.has(option.id)) || [];
+  return [...live, ...modelOptions];
+}
+
+function modelLabel(modelId: string, runtimeStatus?: RuntimeStatus | null) {
+  return runtimeModelOptions(runtimeStatus || null).find((item) => item.id === modelId)?.label || modelId.split('/').pop() || modelId;
 }
 
 function readStoredProfileOverrides(): AgentProfileOverrides {
@@ -708,6 +668,7 @@ function SkillEditor({
 function ProfilePanel({
   agent,
   model,
+  availableModels,
   onModelChange,
   prompt,
   skills,
@@ -719,6 +680,7 @@ function ProfilePanel({
 }: {
   agent: AgentDef;
   model: string;
+  availableModels: typeof modelOptions;
   onModelChange: (id: AgentId, model: string) => void;
   prompt: string;
   skills: string[];
@@ -779,7 +741,7 @@ function ProfilePanel({
           value={model}
           onChange={(event) => onModelChange(agent.id, event.target.value)}
         >
-          {modelOptions.map((option) => (
+          {availableModels.map((option) => (
             <option key={option.id} value={option.id}>{option.provider} · {option.label}</option>
           ))}
         </select>
@@ -806,14 +768,18 @@ function ProfilePanel({
 function CommandCenter({
   prompt,
   plan,
+  bridgeError,
+  dispatching,
   setPrompt,
   runPlan,
   applyRecommendedToAll,
 }: {
   prompt: string;
   plan: OfficePlan;
+  bridgeError: string | null;
+  dispatching: boolean;
   setPrompt: (v: string) => void;
-  runPlan: () => void;
+  runPlan: () => void | Promise<void>;
   applyRecommendedToAll: () => void;
 }) {
   return (
@@ -829,6 +795,7 @@ function CommandCenter({
         <div className="command-summary">
           <strong>{plan.headline}</strong>
           <span>{plan.telegramDigest}</span>
+          {bridgeError ? <span className="bridge-error">브릿지 오류: {bridgeError}</span> : null}
           <div className="ops-metrics">
             <em><BadgeCheck size={14} /> {plan.tasks.filter((task) => task.status === 'done').length} 완료</em>
             <em><CircleDot size={14} /> {plan.tasks.filter((task) => task.status === 'running').length} 작업</em>
@@ -837,9 +804,9 @@ function CommandCenter({
         </div>
       </div>
       <div className="command-actions">
-        <button className="primary-btn" onClick={runPlan}><Play size={16} /> CEO에게 작업 분배</button>
+        <button className="primary-btn" onClick={runPlan} disabled={dispatching}><Play size={16} /> {dispatching ? '실제 브릿지 호출 중' : 'CEO에게 작업 분배'}</button>
         <button className="ghost-btn" onClick={applyRecommendedToAll}><Wand2 size={16} /> 전 직원 추천 스킬 붙이기</button>
-        <span className="safe-note"><Lock size={14} /> Telegram, 파일 쓰기, GitHub push는 승인 대기 흐름으로 표시</span>
+        <span className="safe-note"><Lock size={14} /> Telegram 전송은 승인 버튼을 누를 때만 실제 API로 나갑니다</span>
       </div>
     </section>
   );
@@ -853,6 +820,7 @@ function ConnectAiOpsPanel({
   opsSettings,
   setOpsSettings,
   telegramIdentity,
+  runtimeStatus,
   profileOverrides,
 }: {
   plan: OfficePlan;
@@ -862,19 +830,28 @@ function ConnectAiOpsPanel({
   opsSettings: ConnectAiOpsSettings;
   setOpsSettings: Dispatch<SetStateAction<ConnectAiOpsSettings>>;
   telegramIdentity: TelegramIdentity;
+  runtimeStatus: RuntimeStatus | null;
   profileOverrides: AgentProfileOverrides;
 }) {
-  const totalSkills = AGENT_ORDER.reduce((sum, id) => sum + (skillSettings[id] || AGENTS[id].suggestedSkills).length, 0);
+  const localSkillCount = AGENT_ORDER.reduce((sum, id) => sum + (skillSettings[id] || AGENTS[id].suggestedSkills).length, 0);
+  const totalSkills = runtimeStatus?.skills.total || localSkillCount;
   const runningCount = plan.tasks.filter((task) => task.status === 'running').length;
   const approvalCount = plan.approvals.filter((item) => item.status === '승인 대기').length;
   const activeTask = plan.tasks.find((task) => task.agent === activeAgent);
   const activeSkillCount = (skillSettings[activeAgent] || AGENTS[activeAgent].suggestedSkills).length;
-  const memoryPressure = Math.min(96, 42 + plan.reports.length * 4 + runningCount * 5);
-  const revenue = planRevenueSnapshot(plan);
+  const memoryBytes = runtimeStatus?.memory.bytes || 0;
+  const memoryProposalCount = runtimeStatus?.memory.memoryProposalCount || 0;
+  const skillProposalCount = runtimeStatus?.memory.skillProposalCount || 0;
   const learningRows = hermesLoopLabels.map((label, idx) => ({
     label,
-    value: Math.min(98, memoryPressure - idx * 9 + (idx === 2 ? activeSkillCount : 0)),
-    state: idx === 2 && activeSkillCount > 5 ? 'improving' : idx === 3 && approvalCount > 0 ? 'waiting' : 'live',
+    value: activeTask
+      ? taskOpsRows(activeTask)[idx]?.value || 0
+      : idx === 1 && memoryProposalCount ? 100
+        : idx === 2 && skillProposalCount ? 100
+          : 0,
+    state: activeTask
+      ? taskOpsRows(activeTask)[idx]?.state || 'waiting'
+      : (idx === 1 && memoryProposalCount) || (idx === 2 && skillProposalCount) ? 'done' : 'waiting',
   }));
   const profiles = [
     { id: 'default', label: 'CEO 운영실', agent: 'ceo' as AgentId, provider: 'OpenAI', status: 'active' },
@@ -883,6 +860,13 @@ function ConnectAiOpsPanel({
     { id: 'telegram', label: '보고/승인팀', agent: 'secretary' as AgentId, provider: 'Ollama', status: approvalCount ? 'approval' : 'standby' },
   ];
   const signals = connectAiOpsSignals(opsSettings);
+  const gatewayRows = runtimeStatus?.gateways?.length
+    ? runtimeStatus.gateways
+    : hermesGateways.map((gateway) => ({ name: gateway, status: 'missing' as const, detail: '브릿지 연결 전' }));
+  const connectedGateways = gatewayRows.filter((gateway) => gateway.status === 'connected' || gateway.status === 'configured').length;
+  const lmStudio = runtimeStatus?.models.providers.find((provider) => provider.id === 'lmstudio');
+  const revenueConnectors = runtimeStatus?.revenue.connectors || fallbackRevenueConnectors;
+  const revenueReady = revenueConnectors.filter((connector) => connector.status === 'connected' || connector.status === 'configured').length;
   const updateOps = <K extends keyof ConnectAiOpsSettings>(key: K, value: ConnectAiOpsSettings[K]) => {
     setOpsSettings((prev) => ({ ...prev, [key]: value }));
   };
@@ -978,7 +962,7 @@ function ConnectAiOpsPanel({
       <div className="telegram-identity">
         <div>
           <strong><Send size={14} /> Telegram 연결 대상</strong>
-          <span>Bot: {telegramIdentity.botName} · @{telegramIdentity.botUsername}</span>
+          <span>Bot: {telegramIdentity.botName} · @{telegramIdentity.botUsername} · {runtimeStatusLabel(runtimeStatus?.telegram.status)}</span>
         </div>
         <div>
           <strong>{telegramIdentity.targetType === 'private' ? 'Private chat' : telegramIdentity.targetType}</strong>
@@ -987,11 +971,12 @@ function ConnectAiOpsPanel({
         <code>{telegramIdentity.source}</code>
       </div>
       <div className="hermes-ops-strip">
-        <span><Cpu size={14} /> Local API 127.0.0.1:8642</span>
-        <span><Brain size={14} /> Memory {memoryPressure}%</span>
+        <span><Cpu size={14} /> Bridge 127.0.0.1:{runtimeStatus?.bridge.port || 5198} {runtimeStatusLabel(runtimeStatus?.bridge.status)}</span>
+        <span><Cpu size={14} /> LM Studio {runtimeStatusLabel(lmStudio?.status)} · {lmStudio?.models.length || 0} models</span>
+        <span><Brain size={14} /> Memory {runtimeStatus?.memory.status === 'connected' ? formatBytes(memoryBytes) : runtimeStatusLabel(runtimeStatus?.memory.status)}</span>
         <span><Layers3 size={14} /> Skills {totalSkills}개</span>
-        <span><DollarSign size={14} /> 수익 확인 {formatWon(revenue.projected)} / {formatWon(revenue.target)}</span>
-        <span><Send size={14} /> Gateways {hermesGateways.length}/16 표시</span>
+        <span><DollarSign size={14} /> 수익 API {revenueReady}/{revenueConnectors.length} · 실제 확인 {formatWon(runtimeStatus?.revenue.total || 0)}</span>
+        <span><Send size={14} /> Gateways {connectedGateways}/{gatewayRows.length} 실제 상태</span>
       </div>
 
       <div className="hermes-ops-grid">
@@ -1023,22 +1008,22 @@ function ConnectAiOpsPanel({
               <em>{row.value}%</em>
             </div>
           ))}
-          <p>{activeTask ? `${resolveAgentProfile(AGENTS[activeTask.agent], profileOverrides).name} 작업 결과가 MEMORY.md와 새 스킬 후보로 들어가는 흐름입니다.` : 'CEO 지시가 장기 기억과 스킬 후보로 정리됩니다.'}</p>
+          <p>{activeTask ? `${resolveAgentProfile(AGENTS[activeTask.agent], profileOverrides).name} 작업 결과는 승인 전까지 런타임 산출물과 스킬 후보로만 보관됩니다.` : `실제 후보 파일 ${memoryProposalCount}개, 스킬 후보 ${skillProposalCount}개를 런타임 폴더에 보관 중입니다.`}</p>
         </div>
 
         <div className="gateway-schedule">
           <strong><Radio size={14} /> Gateways & Schedules</strong>
           <div className="gateway-grid">
-            {hermesGateways.map((gateway, idx) => (
-              <span className={gateway === 'Telegram' && approvalCount ? 'waiting' : 'live'} key={gateway}>
-                {gateway}<em>{idx === 0 ? `${approvalCount} approval` : 'armed'}</em>
+            {gatewayRows.map((gateway) => (
+              <span className={gateway.status === 'connected' || gateway.status === 'configured' ? 'live' : 'waiting'} key={gateway.name}>
+                {gateway.name}<em>{gateway.name === 'Telegram' && approvalCount ? `${approvalCount} approval` : runtimeStatusLabel(gateway.status)}</em>
               </span>
             ))}
           </div>
           <div className="cron-queue">
-            <span><Clock size={13} /> 매일 09:00 보고서</span>
-            <span><Clock size={13} /> 2시간마다 유튜브 분석</span>
-            <span><Clock size={13} /> 승인 후 Telegram 전송</span>
+            <span><Clock size={13} /> 매일 {opsSettings.dailyBriefingTime} 보고서</span>
+            <span><Clock size={13} /> 24시간 업무 {opsSettings.autoCycleEnabled ? '사용자 ON' : '사용자 대기'}</span>
+            <span><Clock size={13} /> Telegram {runtimeStatus?.telegram.canSend ? '승인 후 실제 전송 가능' : '전송 대상 미연결'}</span>
           </div>
         </div>
       </div>
@@ -1051,41 +1036,42 @@ function ConnectAiOpsPanel({
 }
 
 function RevenueBoard({
-  plan,
-  profileOverrides,
+  runtimeStatus,
 }: {
-  plan: OfficePlan;
-  profileOverrides: AgentProfileOverrides;
+  runtimeStatus: RuntimeStatus | null;
 }) {
-  const revenue = planRevenueSnapshot(plan);
+  const revenue = runtimeStatus?.revenue;
+  const connectors = revenue?.connectors || fallbackRevenueConnectors;
+  const connectedCount = revenue?.connectedCount || 0;
+  const configuredCount = revenue?.configuredCount || 0;
+  const total = revenue?.total || 0;
 
   return (
     <section className="revenue-board glass">
       <div className="section-title"><DollarSign size={18} /><span>수익/번돈 확인</span></div>
       <div className="revenue-overview">
         <div className="revenue-hero">
-          <span>이번 루프 확인 금액</span>
-          <strong>{formatWon(revenue.projected)}</strong>
-          <small>월 목표 {formatWon(revenue.target)} 대비 {revenue.progress}% · 결제 API 연동 전에는 운영 시뮬레이션 상태로 표시</small>
-          <i><b style={{ width: `${revenue.progress}%` }} /></i>
+          <span>실제 API 확인 금액</span>
+          <strong>{formatWon(total)}</strong>
+          <small>{revenue?.note || '브릿지 연결 전입니다. 실제 커넥터가 없으면 0원으로 표시합니다.'}</small>
+          <i><b style={{ width: `${total > 0 ? 100 : 0}%` }} /></i>
         </div>
         <div className="revenue-kpis">
-          <span><b>{formatWon(revenue.confirmed)}</b><small>완료 산출물 기반 확정</small></span>
-          <span><b>{formatWon(revenue.pending)}</b><small>승인 대기 수익</small></span>
-          <span><b>{plan.tasks.filter((task) => task.status !== 'queued').length}명</b><small>수익 루프 참여 직원</small></span>
+          <span><b>{connectedCount}개</b><small>실제 조회 연결됨</small></span>
+          <span><b>{configuredCount}개</b><small>키는 있으나 조회 대기</small></span>
+          <span><b>{connectors.filter((item) => item.status === 'missing').length}개</b><small>권한/키 없음</small></span>
         </div>
       </div>
       <div className="revenue-streams">
-        {revenue.streams.map((stream) => {
-          const owner = AGENTS[stream.owner];
-          const profile = resolveAgentProfile(owner, profileOverrides);
-          const pct = clampPercent((stream.value / stream.target) * 100);
+        {connectors.map((connector) => {
+          const tone = connector.status === 'connected' ? 'confirmed' : connector.status === 'configured' ? 'pending' : 'projected';
           return (
-            <div className={`revenue-stream ${stream.tone}`} key={stream.label} style={{ '--agent-color': owner.color } as CSSProperties}>
-              <span>{stream.label}<em>{stream.tone === 'confirmed' ? '확정' : stream.tone === 'pending' ? '승인 대기' : '예상'}</em></span>
-              <strong>{formatWon(stream.value)}</strong>
-              <small>{profile.name} · {stream.source}</small>
-              <i><b style={{ width: `${pct}%` }} /></i>
+            <div className={`revenue-stream ${tone}`} key={connector.id} style={{ '--agent-color': connector.status === 'connected' ? '#34d399' : '#94a3b8' } as CSSProperties}>
+              <span>{connector.label}<em>{runtimeStatusLabel(connector.status)}</em></span>
+              <strong>{formatWon(connector.amount)}</strong>
+              <small>{connector.source}</small>
+              <small>{connector.detail}</small>
+              <i><b style={{ width: `${connector.amount > 0 ? 100 : 0}%` }} /></i>
             </div>
           );
         })}
@@ -1098,40 +1084,42 @@ function TaskBoard({
   plan,
   activeAgent,
   selectAgent,
+  runtimeStatus,
   profileOverrides,
 }: {
   plan: OfficePlan;
   activeAgent: AgentId;
   selectAgent: (id: AgentId) => void;
+  runtimeStatus: RuntimeStatus | null;
   profileOverrides: AgentProfileOverrides;
 }) {
   const selectedTask = plan.tasks.find((task) => task.agent === activeAgent) || plan.tasks[0];
   const selectedAgent = AGENTS[selectedTask.agent];
   const selectedProfile = resolveAgentProfile(selectedAgent, profileOverrides);
   const selectedOpsRows = taskOpsRows(selectedTask);
-  const revenue = planRevenueSnapshot(plan);
-  const selectedRevenue = revenue.agentValues[selectedTask.agent] || taskRevenueValue(selectedTask);
-  const selectedRevenuePct = clampPercent((selectedRevenue / monthlyRevenueTarget) * 100);
+  const revenueConnectors = runtimeStatus?.revenue.connectors || fallbackRevenueConnectors;
+  const revenueReady = revenueConnectors.filter((connector) => connector.status === 'connected' || connector.status === 'configured').length;
+  const actualRevenue = runtimeStatus?.revenue.total || 0;
   const selectedGatewayRows = [
     {
       label: 'Telegram',
-      value: selectedTask.approvalRequired ? 'approval' : 'armed',
-      detail: selectedTask.approvalRequired ? '대표 승인 후 보고 전송' : '보고 준비 완료',
+      value: runtimeStatusLabel(runtimeStatus?.telegram.status),
+      detail: runtimeStatus?.telegram.canSend ? '대표 승인 후 실제 전송 가능' : '전송 대상 또는 봇 키 확인 필요',
     },
     {
       label: 'Memory',
-      value: selectedTask.status === 'done' ? 'saved' : 'queue',
-      detail: selectedTask.artifact,
+      value: runtimeStatusLabel(runtimeStatus?.memory.status),
+      detail: selectedTask.status === 'done' || selectedTask.status === 'approval' ? selectedTask.artifact : '완료 전에는 런타임 산출물 후보만 유지',
     },
     {
       label: 'Skill Forge',
-      value: selectedTask.status === 'queued' ? 'candidate' : 'active',
-      detail: `${selectedTask.skills[0]} 개선 후보`,
+      value: selectedTask.status === 'done' ? 'candidate' : '대기',
+      detail: `${selectedTask.skills[0]} 개선 제안은 승인 전까지 후보입니다`,
     },
     {
       label: 'Schedule',
-      value: selectedTask.status === 'approval' ? 'waiting' : '24h loop',
-      detail: selectedTask.status === 'approval' ? '승인 뒤 예약 실행' : '다음 자율 루프 대기',
+      value: selectedTask.status === 'approval' ? '승인 대기' : '대기',
+      detail: selectedTask.status === 'approval' ? '승인 뒤 실제 게이트 실행' : '사용자가 24시간 업무를 켜야 자동 루프에 들어갑니다',
     },
   ];
 
@@ -1193,10 +1181,10 @@ function TaskBoard({
         </div>
         <div className="mini-revenue-card">
           <strong><TrendingUp size={14} /> Revenue Check</strong>
-          <b>{formatWon(selectedRevenue)}</b>
-          <small>{selectedProfile.name} 이번 루프 수익 기여 · 월 목표 대비 {selectedRevenuePct}%</small>
-          <i><b style={{ width: `${selectedRevenuePct}%` }} /></i>
-          <span><DollarSign size={13} /> YouTube/웹사이트/자동화 매출판에 반영</span>
+          <b>{formatWon(actualRevenue)}</b>
+          <small>{selectedProfile.name} 카드에는 가짜 기여금을 넣지 않습니다. 실제 API 연결 {revenueReady}/{revenueConnectors.length}</small>
+          <i><b style={{ width: `${actualRevenue > 0 ? 100 : 0}%` }} /></i>
+          <span><DollarSign size={13} /> {revenueConnectors.map((connector) => `${connector.label}:${runtimeStatusLabel(connector.status)}`).join(' · ')}</span>
         </div>
       </div>
       <div className="task-grid">
@@ -1205,7 +1193,6 @@ function TaskBoard({
           const profile = resolveAgentProfile(agent, profileOverrides);
           const opsRows = taskOpsRows(task);
           const selected = selectedTask.id === task.id;
-          const taskRevenue = revenue.agentValues[task.agent] || taskRevenueValue(task);
           return (
             <button key={task.id} className={`task-card ${task.status} ${selected ? 'selected' : ''}`} onClick={() => selectAgent(task.agent)} style={{ borderColor: agent.color, '--agent-color': agent.color } as CSSProperties}>
               <span className="task-agent-profile">
@@ -1227,7 +1214,7 @@ function TaskBoard({
                   </span>
                 ))}
               </span>
-              <span className="task-money"><DollarSign size={13} /> 수익 기여 {formatWon(taskRevenue)}</span>
+              <span className="task-money"><DollarSign size={13} /> 수익 API {revenueReady}/{revenueConnectors.length} · 실제 {formatWon(actualRevenue)}</span>
               <span className="task-model"><Cpu size={13} /> {modelLabel(task.model)}</span>
               <span className="task-skills"><Zap size={13} /> {task.skills.slice(0, 4).join(' · ')}</span>
               <span className="task-output"><FileText size={13} /> {task.output}</span>
@@ -1243,6 +1230,7 @@ function TaskBoard({
 function ModelRoutingPanel({
   activeAgent,
   modelSettings,
+  availableModels,
   skillSettings,
   selectAgent,
   onModelChange,
@@ -1251,6 +1239,7 @@ function ModelRoutingPanel({
 }: {
   activeAgent: AgentId;
   modelSettings: ModelSettings;
+  availableModels: typeof modelOptions;
   skillSettings: SkillSettings;
   selectAgent: (id: AgentId) => void;
   onModelChange: (id: AgentId, model: string) => void;
@@ -1276,7 +1265,7 @@ function ModelRoutingPanel({
                 value={modelSettings[id]}
                 onChange={(event) => onModelChange(id, event.target.value)}
               >
-                {modelOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+                {availableModels.map((option) => <option key={option.id} value={option.id}>{option.provider} · {option.label}</option>)}
               </select>
               <small>{(skillSettings[id] || agent.suggestedSkills).slice(0, 4).join(' · ')}</small>
               <button type="button" className="route-skill-btn" onClick={() => onRecommendSkills(id)}><Wand2 size={13} /> 추천</button>
@@ -1389,7 +1378,13 @@ export default function App() {
   const [telegramIdentity, setTelegramIdentity] = useState<TelegramIdentity>(defaultTelegramIdentity);
   const [approvalDecisions, setApprovalDecisions] = useState<Record<string, ApprovalStatus>>({});
   const [profileOverrides, setProfileOverrides] = useState<AgentProfileOverrides>(() => readStoredProfileOverrides());
-  const plan = useMemo(() => makePlan(prompt, seed, modelSettings, skillSettings), [modelSettings, prompt, seed, skillSettings]);
+  const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus | null>(null);
+  const [runtimePlan, setRuntimePlan] = useState<OfficePlan | null>(null);
+  const [bridgeError, setBridgeError] = useState<string | null>(null);
+  const [dispatching, setDispatching] = useState(false);
+  const templatePlan = useMemo(() => makePlan(prompt, seed, modelSettings, skillSettings), [modelSettings, prompt, seed, skillSettings]);
+  const plan = runtimePlan || templatePlan;
+  const availableModels = useMemo(() => runtimeModelOptions(runtimeStatus), [runtimeStatus]);
   const selected = AGENTS[activeAgent];
   const selectedSkills = skillSettings[activeAgent] || selected.suggestedSkills;
 
@@ -1399,27 +1394,50 @@ export default function App() {
 
   useEffect(() => {
     let alive = true;
-    fetch(`/telegram-status.local.json?t=${Date.now()}`, { cache: 'no-store' })
-      .then((response) => {
-        if (!response.ok) throw new Error(`telegram status ${response.status}`);
-        return response.json() as Promise<Partial<TelegramIdentity>>;
-      })
-      .then((payload) => {
+    const refresh = async () => {
+      try {
+        const payload = await fetchRuntimeJson<RuntimeStatus>('/api/runtime/status');
         if (!alive) return;
+        setRuntimeStatus(payload);
         setTelegramIdentity({
-          botName: payload.botName || defaultTelegramIdentity.botName,
-          botUsername: payload.botUsername || defaultTelegramIdentity.botUsername,
-          targetType: payload.targetType || defaultTelegramIdentity.targetType,
-          targetName: payload.targetName || defaultTelegramIdentity.targetName,
-          targetUsername: payload.targetUsername ?? null,
-          source: payload.source || defaultTelegramIdentity.source,
+          botName: payload.telegram.botName || defaultTelegramIdentity.botName,
+          botUsername: payload.telegram.botUsername || defaultTelegramIdentity.botUsername,
+          targetType: payload.telegram.targetType || defaultTelegramIdentity.targetType,
+          targetName: payload.telegram.targetName || defaultTelegramIdentity.targetName,
+          targetUsername: payload.telegram.targetUsername ?? null,
+          source: payload.telegram.source || defaultTelegramIdentity.source,
         });
-      })
-      .catch(() => {
-        if (alive) setTelegramIdentity(defaultTelegramIdentity);
-      });
+        setBridgeError(null);
+      } catch (error) {
+        if (!alive) return;
+        setBridgeError(error instanceof Error ? error.message : String(error));
+        setTelegramIdentity(defaultTelegramIdentity);
+      }
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 5000);
     return () => {
       alive = false;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    const refreshTasks = async () => {
+      try {
+        const payload = await fetchRuntimeJson<RuntimeTaskResponse>('/api/tasks');
+        if (!alive) return;
+        if (payload.plan) setRuntimePlan(payload.plan);
+      } catch {
+        if (alive) setRuntimePlan(null);
+      }
+    };
+    refreshTasks();
+    const timer = window.setInterval(refreshTasks, 1800);
+    return () => {
+      alive = false;
+      window.clearInterval(timer);
     };
   }, []);
 
@@ -1463,10 +1481,36 @@ export default function App() {
     });
   };
 
-  const runPlan = () => {
-    setSeed((next) => next + 1);
+  const runPlan = async () => {
+    setDispatching(true);
     setApprovalDecisions({});
     setActiveAgent('ceo');
+    try {
+      const payload = await fetchRuntimeJson<RuntimeTaskResponse>('/api/tasks/dispatch', {
+        method: 'POST',
+        body: JSON.stringify({ prompt, modelSettings, skillSettings }),
+      });
+      if (payload.plan) setRuntimePlan(payload.plan);
+      setBridgeError(null);
+      setSeed((next) => next + 1);
+    } catch (error) {
+      setBridgeError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setDispatching(false);
+    }
+  };
+
+  const respondApproval = async (id: string, status: ApprovalStatus) => {
+    setApprovalDecisions((prev) => ({ ...prev, [id]: status }));
+    if (status === '거절됨') return;
+    try {
+      const payload = await fetchRuntimeJson<RuntimeTaskResponse>(`/api/tasks/${encodeURIComponent(id)}/approve`, { method: 'POST' });
+      if (payload.plan) setRuntimePlan(payload.plan);
+      setBridgeError(null);
+    } catch (error) {
+      setBridgeError(error instanceof Error ? error.message : String(error));
+      setApprovalDecisions((prev) => ({ ...prev, [id]: '실패' }));
+    }
   };
 
   return (
@@ -1490,7 +1534,7 @@ export default function App() {
       <main className="layout">
         <div className="left-col">
           <Office activeAgent={activeAgent} plan={plan} selectAgent={setActiveAgent} opsSettings={opsSettings} profileOverrides={profileOverrides} />
-          <CommandCenter prompt={prompt} plan={plan} setPrompt={setPrompt} runPlan={runPlan} applyRecommendedToAll={applyRecommendedToAll} />
+          <CommandCenter prompt={prompt} plan={plan} bridgeError={bridgeError} dispatching={dispatching} setPrompt={setPrompt} runPlan={runPlan} applyRecommendedToAll={applyRecommendedToAll} />
           <ConnectAiOpsPanel
             plan={plan}
             skillSettings={skillSettings}
@@ -1499,6 +1543,7 @@ export default function App() {
             opsSettings={opsSettings}
             setOpsSettings={setOpsSettings}
             telegramIdentity={telegramIdentity}
+            runtimeStatus={runtimeStatus}
             profileOverrides={profileOverrides}
           />
         </div>
@@ -1506,6 +1551,7 @@ export default function App() {
           <ProfilePanel
             agent={selected}
             model={modelSettings[activeAgent]}
+            availableModels={availableModels}
             onModelChange={updateModel}
             prompt={prompt}
             skills={selectedSkills}
@@ -1517,14 +1563,15 @@ export default function App() {
           />
         </div>
         <div className="workbench-grid">
-          <RevenueBoard plan={plan} profileOverrides={profileOverrides} />
-          <TaskBoard plan={plan} activeAgent={activeAgent} selectAgent={setActiveAgent} profileOverrides={profileOverrides} />
+          <RevenueBoard runtimeStatus={runtimeStatus} />
+          <TaskBoard plan={plan} activeAgent={activeAgent} selectAgent={setActiveAgent} runtimeStatus={runtimeStatus} profileOverrides={profileOverrides} />
           <Reports plan={plan} />
-          <ApprovalPanel approvals={plan.approvals} decisions={approvalDecisions} respondApproval={(id, status) => setApprovalDecisions((prev) => ({ ...prev, [id]: status }))} />
+          <ApprovalPanel approvals={plan.approvals} decisions={approvalDecisions} respondApproval={respondApproval} />
           <BrainPanel plan={plan} />
           <ModelRoutingPanel
             activeAgent={activeAgent}
             modelSettings={modelSettings}
+            availableModels={availableModels}
             skillSettings={skillSettings}
             selectAgent={setActiveAgent}
             onModelChange={updateModel}
