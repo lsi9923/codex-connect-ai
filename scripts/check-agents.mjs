@@ -57,6 +57,10 @@ assert(appTsx.includes('RevenueBoard') && appTsx.includes('수익/번돈 확인'
 assert(appTsx.includes('RuntimeStatus') && appTsx.includes("fetchRuntimeJson<RuntimeStatus>('/api/runtime/status')"), '프론트는 로컬 브릿지 runtime status를 읽어야 합니다.');
 assert(appTsx.includes("fetchRuntimeJson<RuntimeTaskResponse>('/api/tasks/dispatch'") && appTsx.includes('/api/tasks/${encodeURIComponent(id)}/approve'), '작업 분배와 승인은 실제 브릿지 API로 연결되어야 합니다.');
 assert(bridgeMjs.includes('/api/runtime/status') && bridgeMjs.includes('/api/models') && bridgeMjs.includes('/api/telegram/status') && bridgeMjs.includes('/api/revenue/status'), '브릿지 서버 핵심 API가 필요합니다.');
+assert(agentsTs.includes("defaultModel: 'hermes/gpt-5.5'") && simulatorTs.includes("id: 'hermes/gpt-5.5'") && simulatorTs.includes("id: 'hermes/gpt-5.3-codex'"), 'Hermes Codex 모델을 직원 기본값과 모델 선택 목록에 넣어야 합니다.');
+assert(bridgeMjs.includes('HERMES_CODEX_MODELS') && bridgeMjs.includes('openai-codex') && bridgeMjs.includes('runHermes') && bridgeMjs.includes('Hermes CLI'), '브릿지는 Hermes CLI openai-codex 실행 경로를 제공해야 합니다.');
+assert(bridgeMjs.includes("if (preferred.startsWith('hermes/'))") && !bridgeMjs.includes('선택 모델 ${preferred}은 현재 직접 연결되지 않아 LM Studio'), '선택 모델이 끊겼을 때 LM Studio로 몰래 대체하면 안 됩니다.');
+assert(bridgeMjs.includes("if (state !== 'completed') return") && !bridgeMjs.includes("writeRuntimeProposals(run, task, 'failed')"), '실패 작업은 장기기억/스킬 후보를 만든 것처럼 표시하면 안 됩니다.');
 assert(bridgeMjs.includes('TELEGRAM_BOT_TOKEN') && bridgeMjs.includes('sendMessage') && bridgeMjs.includes('getMe'), 'Telegram은 실제 getMe/sendMessage 흐름이어야 합니다.');
 assert(bridgeMjs.includes('127.0.0.1:1234/v1/models') && bridgeMjs.includes('/v1/chat/completions'), 'LM Studio 실제 모델 감지와 chat completions 호출이 필요합니다.');
 assert(bridgeMjs.includes('PAYPAL_CLIENT_ID') && bridgeMjs.includes('YOUTUBE_REFRESH_TOKEN'), '수익 패널은 PayPal/YouTube 실제 권한 여부를 검사해야 합니다.');

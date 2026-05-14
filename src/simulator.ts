@@ -70,6 +70,12 @@ export type ModelSettings = Record<AgentId, string>;
 const defaultPrompt = '이번 달 월수익 1천만 원을 목표로 유튜브 콘텐츠, 수익성 웹사이트, Telegram 보고 자동화를 같이 운영해줘.';
 
 export const modelOptions: ModelOption[] = [
+  { id: 'hermes/gpt-5.5', label: 'gpt-5.5', provider: 'Hermes Codex' },
+  { id: 'hermes/gpt-5.4', label: 'gpt-5.4', provider: 'Hermes Codex' },
+  { id: 'hermes/gpt-5.4-mini', label: 'gpt-5.4-mini', provider: 'Hermes Codex' },
+  { id: 'hermes/gpt-5.3-codex', label: 'gpt-5.3-codex', provider: 'Hermes Codex' },
+  { id: 'hermes/gpt-5.3-codex-spark', label: 'gpt-5.3-codex-spark', provider: 'Hermes Codex' },
+  { id: 'hermes/gpt-5.2', label: 'gpt-5.2', provider: 'Hermes Codex' },
   { id: 'openai/gpt-5.4', label: 'GPT-5.4', provider: 'OpenAI' },
   { id: 'anthropic/claude-sonnet-4.6', label: 'Claude Sonnet 4.6', provider: 'Anthropic' },
   { id: 'openrouter/qwen3-max', label: 'Qwen3 Max', provider: 'OpenRouter' },

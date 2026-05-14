@@ -18,6 +18,19 @@ const OUTPUT_ROOT = path.join(RUNTIME_ROOT, 'outputs');
 const MEMORY_PROPOSAL_ROOT = path.join(RUNTIME_ROOT, 'memory-proposals');
 const SKILL_PROPOSAL_ROOT = path.join(RUNTIME_ROOT, 'skill-proposals');
 const STATE_FILE = path.join(RUNTIME_ROOT, 'state.json');
+const HERMES_CONFIG_FILE = path.join(HERMES_ROOT, 'config.yaml');
+const HERMES_WEB_HEALTH_URL = 'http://127.0.0.1:8788/health';
+const HERMES_WEB_SETTINGS_URL = 'http://127.0.0.1:8788/api/settings';
+const MODEL_CALL_TIMEOUT_MS = Number(process.env.CONNECT_AI_MODEL_TIMEOUT_MS || 240000);
+const HERMES_CALL_TIMEOUT_MS = Number(process.env.CONNECT_AI_HERMES_TIMEOUT_MS || 600000);
+const HERMES_CODEX_MODELS = [
+  'gpt-5.5',
+  'gpt-5.4',
+  'gpt-5.4-mini',
+  'gpt-5.3-codex',
+  'gpt-5.3-codex-spark',
+  'gpt-5.2',
+];
 
 const SPECIALIST_IDS = ['youtube', 'instagram', 'designer', 'developer', 'business', 'secretary', 'editor', 'writer', 'researcher'];
 
@@ -82,15 +95,15 @@ const DEFAULT_SKILLS = {
 };
 
 const DEFAULT_MODELS = {
-  youtube: 'lmstudio/qwen2.5-coder-14b',
-  instagram: 'openrouter/qwen3-max',
-  designer: 'anthropic/claude-sonnet-4.6',
-  developer: 'openai/gpt-5.4',
-  business: 'openrouter/kimi-k2',
-  secretary: 'lmstudio/gemma-3-12b',
-  editor: 'ollama/gemma3:latest',
-  writer: 'anthropic/claude-sonnet-4.6',
-  researcher: 'openrouter/deepseek-v3.2',
+  youtube: 'hermes/gpt-5.5',
+  instagram: 'hermes/gpt-5.5',
+  designer: 'hermes/gpt-5.5',
+  developer: 'hermes/gpt-5.5',
+  business: 'hermes/gpt-5.5',
+  secretary: 'hermes/gpt-5.5',
+  editor: 'hermes/gpt-5.5',
+  writer: 'hermes/gpt-5.5',
+  researcher: 'hermes/gpt-5.5',
 };
 
 const AGENT_NAMES = {
@@ -150,7 +163,11 @@ function publicEnvFlags(env) {
 
 async function fetchJson(url, options = {}, timeoutMs = 1800) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
   try {
     const response = await fetch(url, { ...options, signal: controller.signal });
     const text = await response.text();
@@ -167,6 +184,11 @@ async function fetchJson(url, options = {}, timeoutMs = 1800) {
       throw error;
     }
     return payload;
+  } catch (error) {
+    if (timedOut) {
+      throw new Error(`timeout after ${timeoutMs}ms: ${url}`);
+    }
+    throw error;
   } finally {
     clearTimeout(timeout);
   }
@@ -180,9 +202,83 @@ async function postJson(url, body, headers = {}, timeoutMs = 60000) {
   }, timeoutMs);
 }
 
+function readHermesModelConfig() {
+  const config = {
+    defaultModel: 'gpt-5.5',
+    provider: 'openai-codex',
+    source: HERMES_CONFIG_FILE,
+  };
+  if (!fs.existsSync(HERMES_CONFIG_FILE)) return config;
+  const text = fs.readFileSync(HERMES_CONFIG_FILE, 'utf8');
+  const modelBlock = text.match(/(?:^|\r?\n)model:\s*\r?\n((?:\s{2,}.+\r?\n?)*)/);
+  const scope = modelBlock?.[1] || text;
+  const defaultMatch = scope.match(/default:\s*['"]?([A-Za-z0-9_.:/-]+)/);
+  const providerMatch = scope.match(/provider:\s*['"]?([A-Za-z0-9_.:/-]+)/);
+  if (defaultMatch) config.defaultModel = defaultMatch[1];
+  if (providerMatch) config.provider = providerMatch[1];
+  return config;
+}
+
+function findHermesExe() {
+  const candidates = [
+    process.env.HERMES_EXE,
+    path.join(os.homedir(), 'Desktop', '커서 ai 폴더', 'hermes-agent', 'venv', 'Scripts', 'hermes.exe'),
+    path.join(os.homedir(), '.local', 'bin', 'hermes.exe'),
+  ].filter(Boolean);
+  const match = candidates.find((candidate) => fs.existsSync(candidate));
+  return match || 'hermes';
+}
+
+function isKnownHermesExe(exe) {
+  return exe !== 'hermes' && fs.existsSync(exe);
+}
+
+async function detectHermes() {
+  const config = readHermesModelConfig();
+  const exe = findHermesExe();
+  let webHealth = 'disconnected';
+  let webDefaultModel = '';
+  let webMessage = '';
+  try {
+    await fetchJson(HERMES_WEB_HEALTH_URL, {}, 1200);
+    webHealth = 'connected';
+  } catch (error) {
+    webMessage = error.message;
+  }
+  try {
+    const settings = await fetchJson(HERMES_WEB_SETTINGS_URL, {}, 1200);
+    webDefaultModel = settings?.default_model || '';
+  } catch {
+    // Hermes CLI can still run without the Web UI process.
+  }
+
+  const defaultModel = webDefaultModel || config.defaultModel;
+  const modelSet = new Set([defaultModel, ...HERMES_CODEX_MODELS].filter(Boolean));
+  const models = [...modelSet];
+  const status = isKnownHermesExe(exe) ? 'connected' : 'missing';
+  return {
+    provider: {
+      id: 'hermes',
+      label: 'Hermes Codex',
+      endpoint: isKnownHermesExe(exe) ? exe : 'hermes CLI not found',
+      status,
+      message: status === 'connected' ? `provider=${config.provider}; web=${webHealth}` : webMessage || 'hermes.exe를 찾지 못했습니다.',
+      defaultModel,
+      hermesProvider: config.provider,
+      webHealth,
+      models,
+    },
+    options: models.map((model) => ({ id: `hermes/${model}`, label: model, provider: 'Hermes Codex', available: status === 'connected' })),
+  };
+}
+
 async function detectModels(env = readEnvFile()) {
   const providers = [];
   const options = [];
+
+  const hermes = await detectHermes();
+  providers.push(hermes.provider);
+  options.push(...hermes.options);
 
   try {
     const payload = await fetchJson('http://127.0.0.1:1234/v1/models', {}, 1800);
@@ -411,9 +507,11 @@ async function runtimeStatus() {
   const revenue = getRevenueStatus(env);
   const skillsTotal = memory.hermesSkillCount + memory.codexSkillCount + (memory.appliedSkill ? 1 : 0);
   const lmStudio = models.providers.find((provider) => provider.id === 'lmstudio');
+  const hermes = models.providers.find((provider) => provider.id === 'hermes');
   const gateways = [
     { name: 'Telegram', status: telegram.connected ? 'connected' : telegram.configured ? 'error' : 'missing', detail: telegram.connected ? `@${telegram.botUsername}` : telegram.targetName },
     { name: 'GitHub', status: env.GITHUB_TOKEN ? 'configured' : 'missing', detail: git.branch },
+    { name: 'Hermes Codex', status: hermes?.status || 'missing', detail: hermes?.defaultModel || 'gpt-5.5' },
     { name: 'OpenRouter', status: env.OPENROUTER_API_KEY ? 'configured' : 'missing', detail: 'OPENROUTER_API_KEY' },
     { name: 'LM Studio', status: lmStudio?.status || 'missing', detail: lmStudio?.endpoint || '127.0.0.1:1234' },
     { name: 'PayPal', status: revenue.connectors[0].status, detail: revenue.connectors[0].source },
@@ -565,6 +663,7 @@ function writeJsonArtifact(filePath, payload) {
 }
 
 function writeRuntimeProposals(run, task, state) {
+  if (state !== 'completed') return;
   const base = `${run.id}-${task.agent}`;
   const createdAt = new Date().toISOString();
   const memoryProposal = path.join(MEMORY_PROPOSAL_ROOT, `${base}.json`);
@@ -581,9 +680,7 @@ function writeRuntimeProposals(run, task, state) {
     error: task.error || null,
     source: 'connect-ai-office-bridge',
     createdAt,
-    note: state === 'failed'
-      ? '실패 로그 보존 후보입니다. 장기 기억에 적용하려면 사람이 확인해야 합니다.'
-      : '장기 기억 후보 파일입니다. 승인 전에는 MEMORY.md에 적용되지 않습니다.',
+    note: '장기 기억 후보 파일입니다. 승인 전에는 MEMORY.md에 적용되지 않습니다.',
   });
   writeJsonArtifact(skillProposal, {
     status: 'candidate',
@@ -596,9 +693,7 @@ function writeRuntimeProposals(run, task, state) {
     artifact: task.artifact,
     source: 'connect-ai-office-bridge',
     createdAt,
-    recommendation: state === 'failed'
-      ? '실패 원인을 반영해 모델 라우팅/타임아웃/도구 전제조건을 보강하는 스킬 후보로 검토합니다.'
-      : '완료 산출물을 기준으로 반복 가능한 작업 절차를 새 스킬 후보로 검토합니다.',
+    recommendation: '완료 산출물을 기준으로 반복 가능한 작업 절차를 새 스킬 후보로 검토합니다.',
   });
   task.memoryProposal = memoryProposal;
   task.skillProposal = skillProposal;
@@ -670,7 +765,6 @@ async function processTask(runId, taskId) {
     task.updatedAt = new Date().toISOString();
     fs.mkdirSync(path.dirname(task.artifact), { recursive: true });
     fs.writeFileSync(task.artifact, failureArtifactBody(task, run.prompt, error), 'utf8');
-    writeRuntimeProposals(run, task, 'failed');
     run.reports.push(reportLine(task.agent, 'progress', `${AGENT_NAMES[task.agent]}: 실제 실행 실패 · ${error.message}`));
     run.updatedAt = new Date().toISOString();
     saveRun(run);
@@ -721,6 +815,9 @@ async function runAgentModel(task, prompt) {
   const env = readEnvFile();
   const models = await detectModels(env);
   const preferred = String(task.model || '');
+  if (preferred.startsWith('hermes/')) {
+    return runHermes(task, prompt, preferred.replace(/^hermes\//, '') || readHermesModelConfig().defaultModel);
+  }
   if (preferred.startsWith('lmstudio/')) {
     return runLmStudio(task, prompt, pickLmStudioModel(preferred.replace(/^lmstudio\//, ''), models));
   }
@@ -730,13 +827,19 @@ async function runAgentModel(task, prompt) {
   if (preferred.startsWith('openai/') && env.OPENAI_API_KEY) {
     return runOpenAI(task, prompt, preferred.replace(/^openai\//, ''), env.OPENAI_API_KEY);
   }
-  const lmStudioModel = pickLmStudioModel('', models);
-  if (lmStudioModel) {
-    const output = await runLmStudio(task, prompt, lmStudioModel);
-    output.text = `[선택 모델 ${preferred}은 현재 직접 연결되지 않아 LM Studio ${lmStudioModel}로 실제 실행했습니다.]\n\n${output.text}`;
-    return output;
+  if (preferred.startsWith('openrouter/')) {
+    throw new Error(`OPENROUTER_API_KEY가 없어 ${preferred}를 실행하지 않았습니다.`);
   }
-  throw new Error(`실행 가능한 모델 공급자가 없습니다. 선택 모델: ${preferred}`);
+  if (preferred.startsWith('openai/')) {
+    throw new Error(`OPENAI_API_KEY가 없어 ${preferred}를 실행하지 않았습니다. Hermes Codex 모델은 hermes/gpt-5.5 형식으로 선택하세요.`);
+  }
+  if (preferred.startsWith('anthropic/')) {
+    throw new Error(`ANTHROPIC_API_KEY 연결이 없어 ${preferred}를 실행하지 않았습니다.`);
+  }
+  if (preferred.startsWith('ollama/')) {
+    throw new Error(`Ollama 실행 브릿지가 아직 연결되지 않아 ${preferred}를 실행하지 않았습니다.`);
+  }
+  throw new Error(`선택 모델 공급자가 실제 연결되지 않았습니다: ${preferred || 'empty'}`);
 }
 
 function pickLmStudioModel(preferred, models) {
@@ -773,6 +876,77 @@ function agentMessages(task, prompt) {
   ];
 }
 
+function hermesPrompt(task, prompt) {
+  const [system, user] = agentMessages(task, prompt);
+  return [
+    system.content,
+    '',
+    '중요:',
+    '- 이 호출은 Hermes CLI openai-codex provider를 통한 실제 실행입니다.',
+    '- 모르면 모른다고 쓰고, 실제 확인하지 않은 수익/완료/전송 결과는 만들지 마세요.',
+    '- 답변은 바로 파일로 저장되므로 한국어 업무 보고서 형태로 작성하세요.',
+    '',
+    user.content,
+  ].join('\n');
+}
+
+function runProcess(command, args, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    let stdout = '';
+    let stderr = '';
+    let timedOut = false;
+    const child = spawn(command, args, {
+      cwd: APP_ROOT,
+      env: { ...process.env, PYTHONIOENCODING: 'utf-8', HERMES_NO_COLOR: '1' },
+      windowsHide: true,
+    });
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      child.kill();
+    }, timeoutMs);
+    child.stdout.on('data', (chunk) => {
+      stdout += chunk.toString('utf8');
+      if (stdout.length > 2_000_000) stdout = stdout.slice(-2_000_000);
+    });
+    child.stderr.on('data', (chunk) => {
+      stderr += chunk.toString('utf8');
+      if (stderr.length > 1_000_000) stderr = stderr.slice(-1_000_000);
+    });
+    child.on('error', (error) => {
+      clearTimeout(timeout);
+      reject(error);
+    });
+    child.on('close', (code) => {
+      clearTimeout(timeout);
+      if (timedOut) {
+        reject(new Error(`Hermes CLI timeout after ${timeoutMs}ms`));
+        return;
+      }
+      resolve({ code, stdout, stderr });
+    });
+  });
+}
+
+async function runHermes(task, prompt, model) {
+  const exe = findHermesExe();
+  if (!isKnownHermesExe(exe)) {
+    throw new Error('hermes.exe를 찾지 못해 Hermes Codex 모델을 실행하지 않았습니다.');
+  }
+  const hermesModel = model || readHermesModelConfig().defaultModel || 'gpt-5.5';
+  const result = await runProcess(exe, ['-z', hermesPrompt(task, prompt), '-m', hermesModel, '--provider', 'openai-codex'], HERMES_CALL_TIMEOUT_MS);
+  const stderr = result.stderr.trim();
+  if (result.code !== 0) {
+    throw new Error(stderr || `Hermes CLI exited with code ${result.code}`);
+  }
+  const text = result.stdout
+    .replace(/\r?\nsession_id:\s*\S+\s*$/i, '')
+    .trim();
+  if (!text) {
+    throw new Error(stderr || 'Hermes CLI가 빈 응답을 반환했습니다.');
+  }
+  return { model: `hermes/${hermesModel}`, text };
+}
+
 async function runLmStudio(task, prompt, model) {
   if (!model) throw new Error('LM Studio model missing');
   const payload = await postJson('http://127.0.0.1:1234/v1/chat/completions', {
@@ -780,7 +954,7 @@ async function runLmStudio(task, prompt, model) {
     messages: agentMessages(task, prompt),
     temperature: 0.3,
     max_tokens: 700,
-  }, {}, 60000);
+  }, {}, MODEL_CALL_TIMEOUT_MS);
   return { model: `lmstudio/${model}`, text: extractChatText(payload) };
 }
 
@@ -790,7 +964,7 @@ async function runOpenRouter(task, prompt, model, token) {
     messages: agentMessages(task, prompt),
     temperature: 0.3,
     max_tokens: 700,
-  }, { authorization: `Bearer ${token}` }, 60000);
+  }, { authorization: `Bearer ${token}` }, MODEL_CALL_TIMEOUT_MS);
   return { model: `openrouter/${model}`, text: extractChatText(payload) };
 }
 
@@ -800,7 +974,7 @@ async function runOpenAI(task, prompt, model, token) {
     messages: agentMessages(task, prompt),
     temperature: 0.3,
     max_tokens: 700,
-  }, { authorization: `Bearer ${token}` }, 60000);
+  }, { authorization: `Bearer ${token}` }, MODEL_CALL_TIMEOUT_MS);
   return { model: `openai/${model}`, text: extractChatText(payload) };
 }
 
@@ -815,6 +989,9 @@ async function approveItem(approvalId) {
   if (!run) throw new Error('No active run');
   const approval = run.approvals.find((item) => item.id === approvalId);
   if (!approval) throw new Error(`Approval not found: ${approvalId}`);
+  if (approval.status === '전송됨' || approval.status === '이번 세션 승인') {
+    return { run, plan: officePlanFromRun(run), approval, skipped: true };
+  }
   if (approvalId.startsWith('telegram-')) {
     const secretary = run.tasks.find((task) => task.agent === 'secretary');
     const result = await sendTelegramMessage(secretary?.output || run.telegramDigest || 'Connect AI 보고서');

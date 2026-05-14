@@ -8,6 +8,9 @@ export interface RuntimeProvider {
   endpoint: string;
   status: RuntimeConnectionState;
   message?: string;
+  defaultModel?: string;
+  hermesProvider?: string;
+  webHealth?: RuntimeConnectionState;
   models: string[];
 }
 

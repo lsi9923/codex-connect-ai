@@ -120,8 +120,9 @@ function taskOpsRows(task: AgentTask) {
   const waiting = task.status === 'queued';
   const approval = task.status === 'approval';
   const running = task.status === 'running';
-  const hasMemoryProposal = Boolean(task.memoryProposal);
-  const hasSkillProposal = Boolean(task.skillProposal);
+  const proposalEligible = done || approval;
+  const hasMemoryProposal = proposalEligible && Boolean(task.memoryProposal);
+  const hasSkillProposal = proposalEligible && Boolean(task.skillProposal);
 
   return [
     {
@@ -134,13 +135,13 @@ function taskOpsRows(task: AgentTask) {
       label: '장기 기억 저장',
       value: hasMemoryProposal ? 100 : 0,
       state: hasMemoryProposal ? 'done' as TaskOpsState : running ? 'running' as TaskOpsState : 'waiting' as TaskOpsState,
-      detail: hasMemoryProposal ? `후보 파일: ${task.memoryProposal}` : '아직 MEMORY.md에 적용하지 않음',
+      detail: failed ? '실패 작업은 기억 후보를 만들지 않습니다' : hasMemoryProposal ? `후보 파일: ${task.memoryProposal}` : '아직 MEMORY.md에 적용하지 않음',
     },
     {
       label: '스킬 개선 제안',
       value: hasSkillProposal ? 100 : 0,
       state: hasSkillProposal ? 'done' as TaskOpsState : running ? 'running' as TaskOpsState : 'waiting' as TaskOpsState,
-      detail: hasSkillProposal ? `후보 파일: ${task.skillProposal}` : `${task.skills[0]} 개선 후보 생성 전`,
+      detail: failed ? '실패 작업은 스킬 후보를 만들지 않습니다' : hasSkillProposal ? `후보 파일: ${task.skillProposal}` : `${task.skills[0]} 개선 후보 생성 전`,
     },
     {
       label: '예약 실행 대기',
@@ -854,16 +855,17 @@ function ConnectAiOpsPanel({
       : (idx === 1 && memoryProposalCount) || (idx === 2 && skillProposalCount) ? 'done' : 'waiting',
   }));
   const profiles = [
-    { id: 'default', label: 'CEO 운영실', agent: 'ceo' as AgentId, provider: 'OpenAI', status: 'active' },
-    { id: 'growth', label: '콘텐츠 성장팀', agent: 'youtube' as AgentId, provider: 'LM Studio', status: 'running' },
-    { id: 'build', label: '개발 자동화팀', agent: 'developer' as AgentId, provider: 'OpenRouter', status: 'running' },
-    { id: 'telegram', label: '보고/승인팀', agent: 'secretary' as AgentId, provider: 'Ollama', status: approvalCount ? 'approval' : 'standby' },
+    { id: 'default', label: 'CEO 운영실', agent: 'ceo' as AgentId, provider: 'Hermes Codex', status: 'active' },
+    { id: 'growth', label: '콘텐츠 성장팀', agent: 'youtube' as AgentId, provider: 'Hermes Codex', status: 'running' },
+    { id: 'build', label: '개발 자동화팀', agent: 'developer' as AgentId, provider: 'Hermes Codex', status: 'running' },
+    { id: 'telegram', label: '보고/승인팀', agent: 'secretary' as AgentId, provider: 'Hermes Codex', status: approvalCount ? 'approval' : 'standby' },
   ];
   const signals = connectAiOpsSignals(opsSettings);
   const gatewayRows = runtimeStatus?.gateways?.length
     ? runtimeStatus.gateways
     : hermesGateways.map((gateway) => ({ name: gateway, status: 'missing' as const, detail: '브릿지 연결 전' }));
   const connectedGateways = gatewayRows.filter((gateway) => gateway.status === 'connected' || gateway.status === 'configured').length;
+  const hermesCodex = runtimeStatus?.models.providers.find((provider) => provider.id === 'hermes');
   const lmStudio = runtimeStatus?.models.providers.find((provider) => provider.id === 'lmstudio');
   const revenueConnectors = runtimeStatus?.revenue.connectors || fallbackRevenueConnectors;
   const revenueReady = revenueConnectors.filter((connector) => connector.status === 'connected' || connector.status === 'configured').length;
@@ -972,6 +974,7 @@ function ConnectAiOpsPanel({
       </div>
       <div className="hermes-ops-strip">
         <span><Cpu size={14} /> Bridge 127.0.0.1:{runtimeStatus?.bridge.port || 5198} {runtimeStatusLabel(runtimeStatus?.bridge.status)}</span>
+        <span><Cpu size={14} /> Hermes Codex {runtimeStatusLabel(hermesCodex?.status)} · {hermesCodex?.models.length || 0} models</span>
         <span><Cpu size={14} /> LM Studio {runtimeStatusLabel(lmStudio?.status)} · {lmStudio?.models.length || 0} models</span>
         <span><Brain size={14} /> Memory {runtimeStatus?.memory.status === 'connected' ? formatBytes(memoryBytes) : runtimeStatusLabel(runtimeStatus?.memory.status)}</span>
         <span><Layers3 size={14} /> Skills {totalSkills}개</span>
@@ -1113,8 +1116,8 @@ function TaskBoard({
     },
     {
       label: 'Skill Forge',
-      value: selectedTask.status === 'done' ? 'candidate' : '대기',
-      detail: `${selectedTask.skills[0]} 개선 제안은 승인 전까지 후보입니다`,
+      value: selectedTask.status === 'done' || selectedTask.status === 'approval' ? 'candidate' : '대기',
+      detail: selectedTask.status === 'failed' ? '실패 작업은 스킬 후보를 만들지 않습니다' : `${selectedTask.skills[0]} 개선 제안은 승인 전까지 후보입니다`,
     },
     {
       label: 'Schedule',
@@ -1134,7 +1137,11 @@ function TaskBoard({
         <div className="task-ops-summary">
           <b>{selectedProfile.name} 업무 운영 루프</b>
           <small>{selectedTask.title} · {taskStatusLabel[selectedTask.status]} · {modelLabel(selectedTask.model)}</small>
-          <span><Database size={13} /> {selectedTask.artifact}</span>
+          <span><Database size={13} /> {(selectedTask.status === 'done' || selectedTask.status === 'approval')
+            ? selectedTask.artifact
+            : selectedTask.status === 'failed'
+              ? `실패 로그: ${selectedTask.artifact}`
+              : '실제 실행 완료 후 산출물 경로가 표시됩니다'}</span>
         </div>
         <div className="task-ops-loop">
           {selectedOpsRows.map((row) => (
@@ -1278,6 +1285,7 @@ function ModelRoutingPanel({
 }
 
 function BrainPanel({ plan }: { plan: OfficePlan }) {
+  const completedArtifacts = plan.tasks.filter((task) => task.status === 'done' || task.status === 'approval').slice(0, 4);
   return (
     <section className="brain-panel glass">
       <div className="section-title"><Brain size={18} /><span>Second Brain / P-Reinforce</span></div>
@@ -1285,9 +1293,9 @@ function BrainPanel({ plan }: { plan: OfficePlan }) {
         {brainFolders.map((folder) => <div key={folder}><CheckCircle2 size={15} /> {folder}</div>)}
       </div>
       <div className="artifact-stack">
-        {plan.tasks.slice(0, 4).map((task) => (
+        {completedArtifacts.length ? completedArtifacts.map((task) => (
           <span key={task.artifact}><Database size={13} /> {task.artifact}</span>
-        ))}
+        )) : <span><Database size={13} /> 완료된 실제 산출물이 아직 없습니다</span>}
       </div>
     </section>
   );
