@@ -29,7 +29,7 @@ export const AGENTS: Record<AgentId, AgentDef> = {
     tagline: '회사 전체 의사결정과 작업 분배를 맡습니다',
     desk: { x: 50, y: 50 },
     defaultModel: 'openai/gpt-5.4',
-    suggestedSkills: ['orchestration', 'planning', 'approval-gate'],
+    suggestedSkills: ['orchestration', 'planning', 'approval-gate', 'pixel-agent-office-simulator'],
     permissions: ['작업 분배', '우선순위 변경', '승인 요청 생성'],
   },
   youtube: {
@@ -70,7 +70,7 @@ export const AGENTS: Record<AgentId, AgentDef> = {
     tagline: '브랜드와 시각 자산 디자인을 담당합니다',
     desk: { x: 66, y: 16 },
     defaultModel: 'anthropic/claude-sonnet-4.6',
-    suggestedSkills: ['thumbnail-brief', 'brand-system', 'visual-review'],
+    suggestedSkills: ['thumbnail-brief', 'brand-system', 'visual-review', 'pixel-agent-office-simulator'],
     permissions: ['썸네일 브리프', '브랜드 톤 정리', '시안 검토'],
   },
   developer: {
@@ -85,7 +85,7 @@ export const AGENTS: Record<AgentId, AgentDef> = {
     persona: '시니어 풀스택 엔지니어 코다리. 왜? 어떻게? 깨지는가?를 묻고 검증하는 책임감 있는 톤.',
     desk: { x: 82, y: 20 },
     defaultModel: 'openai/gpt-5.4',
-    suggestedSkills: ['code-edit', 'browser-test', 'deployment'],
+    suggestedSkills: ['code-edit', 'browser-test', 'deployment', 'pixel-agent-office-simulator'],
     permissions: ['코드 수정', '테스트 실행', '배포 전 점검'],
   },
   business: {
@@ -114,7 +114,7 @@ export const AGENTS: Record<AgentId, AgentDef> = {
     persona: '친근하고 정중한 톤. 사장님이라 부르고 짧고 정리된 보고를 한다.',
     desk: { x: 32, y: 82 },
     defaultModel: 'lmstudio/gemma-3-12b',
-    suggestedSkills: ['telegram-briefing', 'schedule', 'approval-routing'],
+    suggestedSkills: ['telegram-briefing', 'schedule', 'approval-routing', 'pixel-agent-office-simulator'],
     permissions: ['Telegram 보고서 작성', '승인 대기열 관리', '일정 요약'],
   },
   editor: {

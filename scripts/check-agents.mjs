@@ -23,6 +23,7 @@ assert(/SPECIALIST_IDS:\s*AgentId\[\][\s\S]*'researcher'/.test(agentsTs), 'SPECI
 assert(simulatorTs.includes('approvalItems'), '승인 대기함 안전장치가 필요합니다.');
 assert(simulatorTs.includes('00_Raw') && simulatorTs.includes('10_Wiki') && simulatorTs.includes('20_Meta'), 'P-Reinforce 폴더 구조가 필요합니다.');
 assert(skillCatalogTs.includes('localSkillCatalog') && skillCatalogTs.includes('recommendSkillsForAgent'), '로컬 스킬 추천 카탈로그가 필요합니다.');
+assert(skillCatalogTs.includes('pixel-agent-office-simulator') && skillCatalogTs.includes('Local Skill') && agentsTs.includes('pixel-agent-office-simulator'), '다운로드한 pixel-agent-office-simulator 스킬이 추천 카탈로그와 기본 직원 스킬에 연결되어야 합니다.');
 assert(appTsx.includes('SkillEditor') && appTsx.includes('전 직원 추천 스킬 붙이기'), '직원별 스킬 편집/추천 UI가 필요합니다.');
 assert(appTsx.includes('ConnectAiOpsPanel') && appTsx.includes('Closed Learning Loop'), 'Connect AI/Hermes 운영 레이어가 필요합니다.');
 assert(appTsx.includes('defaultConnectAiOpsSettings') && appTsx.includes('autoCycleEnabled: false'), '24시간 업무는 사용자가 켜기 전 대기 상태여야 합니다.');
@@ -38,8 +39,10 @@ assert(appTsx.includes('motionAgent={engine.agent}') && officeStageTsx.includes(
 assert(appTsx.includes('SangOfficeSimulator') && sangSimTsx.includes('https://github.com/lsi9923/sang-ai-office-simulator') && sangSimTsx.includes('processParallel') && sangSimTsx.includes('computeBubbleOffsets') && stylesCss.includes('sang-sim-cover'), 'lsi9923/sang-ai-office-simulator 기반 시뮬레이션을 현재 무대 크기에 맞춰 포함해야 합니다.');
 assert(sangSimTsx.includes('https://connectai-7gxqex9s.manus.space/') && sangSimTsx.includes('7GXqEX9S442FPxx7zqYqED'), 'Manus 공개 프로젝트 식별자와 기준 URL이 시뮬레이션 payload에 있어야 합니다.');
 assert(sangSimTsx.includes('/connect-ai/assets/map.jpeg') && sangSimTsx.includes('/connect-ai/pixel/characters') && sangSimTsx.includes('SPRITE_CONFIG'), '원본 Connect AI 맵과 픽셀 스프라이트 자산을 로컬 시뮬레이션에 사용해야 합니다.');
+assert(sangSimTsx.includes('SCALE: 1.4') && sangSimTsx.includes('IDLE_SPEED: 14') && sangSimTsx.includes('WALK_SPEED: 7') && sangSimTsx.includes('10 + Math.floor(agent.y * 0.1)'), '픽셀 스킬/깃허브 기준 스프라이트 스케일, 프레임 속도, z-index 계산을 따라야 합니다.');
 assert(sangSimTsx.includes('QUICK_CMDS') && sangSimTsx.includes('sang-quick-command') && sangSimTsx.includes('AGENT STATUS') && sangSimTsx.includes('ACTIVITY LOG'), 'Manus형 우측 운영 패널에는 빠른 명령, 직원 상태, 활동 로그가 있어야 합니다.');
 assert(sangSimTsx.includes('sang-speech-bubble') && sangSimTsx.includes('sang-pixel-agent') && sangSimTsx.includes('backgroundPosition'), '직원별 말풍선은 스프라이트 캐릭터 컨테이너 안에서 함께 움직여야 합니다.');
+assert(sangSimTsx.includes('AgentDetailModal') && sangSimTsx.includes('formatDuration') && stylesCss.includes('sang-agent-modal'), '직원 클릭 시 스킬 레퍼런스 기준 상세 모달과 완료 이력이 떠야 합니다.');
 assert(appTsx.includes('통합 업무 말풍선') && !appTsx.includes('className="route-director"'), '직원 이동 상태와 업무 상태는 별도 중앙 말풍선이 아니라 직원별 통합 말풍선 하나로 보여야 합니다.');
 assert(!appTsx.includes('work-packet') && !appTsx.includes('packet-a'), '전략/분석/보고 같은 떠다니는 보조 라벨은 직원 통합 말풍선과 중복되므로 없어야 합니다.');
 assert(appTsx.includes('OfficeStage3D'), 'Three.js 3D 사무실 무대가 앱에 연결되어야 합니다.');

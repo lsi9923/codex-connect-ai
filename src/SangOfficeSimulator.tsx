@@ -91,9 +91,9 @@ const SPRITE_CONFIG = {
   IDLE_ROW: 1,
   WALK_ROW: 2,
   DIRS: { down: 0, left: 6, right: 12, up: 18 } as const,
-  IDLE_SPEED: 16,
-  WALK_SPEED: 6,
-  SCALE: 1.55,
+  IDLE_SPEED: 14,
+  WALK_SPEED: 7,
+  SCALE: 1.4,
 };
 
 const { TILE, CHAR_HEIGHT, FRAMES_PER_DIR, IDLE_ROW, WALK_ROW, DIRS, IDLE_SPEED, WALK_SPEED, SCALE } = SPRITE_CONFIG;
@@ -107,6 +107,24 @@ const STATE_LABELS: Record<SimAgentState, string> = {
   reporting: 'REPORT',
   walking_home: 'RETURN',
   working: 'WORKING',
+};
+
+const STATE_DETAIL_LABELS: Record<SimAgentState, string> = {
+  idle: 'IDLE - 대기 중',
+  thinking: 'THINKING - 작업 구상 중',
+  walking_to_ceo: 'MOVING - CEO에게 이동 중',
+  reporting: 'REPORTING - CEO에게 보고 중',
+  walking_home: 'RETURNING - 자리로 복귀 중',
+  working: 'WORKING - 작업 수행 중',
+};
+
+const STATE_COLORS: Record<SimAgentState, string> = {
+  idle: '#475569',
+  thinking: '#ffab40',
+  walking_to_ceo: '#22d3ee',
+  reporting: '#f8fafc',
+  walking_home: '#22d3ee',
+  working: 'inherit',
 };
 
 const SIM_AGENTS: SimAgentDef[] = [
@@ -590,6 +608,7 @@ function useSangSimulation(plan: OfficePlan) {
       dashboardParity: true,
       sourceRepo: SIM_SOURCE_REPO,
       sourceRepos: [SIM_SOURCE_REPO, CONNECT_AI_SOURCE_REPO],
+      skillPackage: 'pixel-agent-office-simulator',
       projectUrl: MANUS_PUBLIC_PROJECT,
       manusProject: MANUS_PROJECT_ID,
       sourceAssets: {
@@ -682,7 +701,7 @@ function PixelAgent({
   const isActive = agent.state !== 'idle';
   const left = (agent.x / 100) * dims.w - RENDERED_W / 2;
   const top = (agent.y / 100) * dims.h - RENDERED_H;
-  const zIndex = 20 + Math.round(agent.y);
+  const zIndex = 10 + Math.floor(agent.y * 0.1);
   const spritePos = getSpritePosition(agent.direction, agent.isWalking, isWorking, frame);
   const progress = Math.max(8, Math.round((agent.isWalking ? agent.walkProgress : isWorking ? 0.68 : 0.12) * 100));
   const bubbleStyle = {
@@ -853,6 +872,111 @@ function AgentStatusCard({ agent }: { agent: SimAgentStatus }) {
   );
 }
 
+function formatDuration(ms: number) {
+  const seconds = Math.max(1, Math.round(ms / 1000));
+  if (seconds < 60) return `${seconds}초`;
+  return `${Math.floor(seconds / 60)}분 ${seconds % 60}초`;
+}
+
+function formatTime(ts: number) {
+  const date = new Date(ts);
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`;
+}
+
+function AgentDetailModal({
+  agent,
+  completedTasks,
+  onClose,
+}: {
+  agent: SimAgentStatus | null;
+  completedTasks: CompletedTask[];
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  if (!agent) return null;
+
+  const stateColor = agent.state === 'working' ? agent.color : STATE_COLORS[agent.state];
+  const displayColor = stateColor === 'inherit' ? agent.color : stateColor;
+  const spritePreviewScale = SCALE * 0.72;
+  const specialtyItems = agent.specialty.split(',').map((item) => item.trim()).filter(Boolean);
+
+  return (
+    <div
+      className="sang-modal-overlay"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <article className="sang-agent-modal" style={{ '--agent-color': agent.color } as CSSProperties}>
+        <header className="sang-agent-modal-head">
+          <span className="sang-modal-sprite" style={{ width: TILE * spritePreviewScale, height: CHAR_HEIGHT * spritePreviewScale }}>
+            <i
+              style={{
+                width: TILE,
+                height: CHAR_HEIGHT,
+                backgroundImage: `url(${agent.sprite})`,
+                backgroundPosition: `0 -${CHAR_HEIGHT}px`,
+                transform: `scale(${spritePreviewScale})`,
+              }}
+            />
+          </span>
+          <span>
+            <b>{agent.emoji} {agent.name}</b>
+            <small>{agent.role}</small>
+          </span>
+          <em>{completedTasks.length} done</em>
+          <button type="button" onClick={onClose} aria-label="상세 모달 닫기">x</button>
+        </header>
+
+        <div className="sang-agent-modal-body">
+          <p className="sang-modal-tagline">{agent.tagline}</p>
+
+          <section>
+            <h3>현재 상태</h3>
+            <div className="sang-modal-status">
+              <i style={{ background: displayColor, boxShadow: agent.state === 'idle' ? 'none' : `0 0 10px ${displayColor}` }} />
+              <span>
+                <b style={{ color: displayColor }}>{STATE_DETAIL_LABELS[agent.state]}</b>
+                <small>{agent.task || agent.thought || '명령 대기 중입니다.'}</small>
+              </span>
+            </div>
+          </section>
+
+          <section>
+            <h3>전문 분야</h3>
+            <div className="sang-modal-specialty">
+              {specialtyItems.map((item) => <span key={item}>{item}</span>)}
+            </div>
+          </section>
+
+          <section>
+            <h3>완료 이력</h3>
+            {completedTasks.length === 0 ? (
+              <p className="sang-modal-empty">명령을 실행하면 직원별 완료 이력이 여기에 쌓입니다.</p>
+            ) : (
+              <div className="sang-modal-history">
+                {completedTasks.map((item, index) => (
+                  <article key={`${item.completedAt}-${index}`}>
+                    <b>{index === 0 ? '최근 ' : ''}{item.task}</b>
+                    <small>{formatTime(item.completedAt)} · {formatDuration(item.durationMs)}</small>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+      </article>
+    </div>
+  );
+}
+
 export function SangOfficeSimulator({
   plan,
   selectAgent,
@@ -862,10 +986,18 @@ export function SangOfficeSimulator({
 }) {
   const { state, issueCommand, issueRandomCommand, toggleReportMode } = useSangSimulation(plan);
   const [draft, setDraft] = useState(plan.brief);
+  const [selectedSimAgentId, setSelectedSimAgentId] = useState<AgentId | null>(null);
   const activeCount = state.agents.filter((agent) => agent.state !== 'idle').length;
   const reportingAgents = state.agents.filter((agent) => agent.state === 'reporting' || agent.state === 'walking_to_ceo');
   const activeAgent = state.agents.find((agent) => agent.id === state.activeAgentId);
   const isParallel = state.reportMode === 'parallel';
+  const selectedSimAgent = selectedSimAgentId ? state.agents.find((agent) => agent.id === selectedSimAgentId) || null : null;
+  const selectedCompletedTasks = selectedSimAgentId ? state.completedTasks[selectedSimAgentId] || [] : [];
+
+  const handleAgentClick = useCallback((id: AgentId) => {
+    selectAgent(id);
+    setSelectedSimAgentId(id);
+  }, [selectAgent]);
 
   useEffect(() => {
     setDraft(plan.brief);
@@ -915,7 +1047,7 @@ export function SangOfficeSimulator({
               activeAgentId={state.activeAgentId}
               reportingAgentIds={state.reportingAgentIds}
               isParallel={isParallel}
-              onAgentClick={selectAgent}
+              onAgentClick={handleAgentClick}
             />
           </div>
         </section>
@@ -976,6 +1108,11 @@ export function SangOfficeSimulator({
           </section>
         </aside>
       </main>
+      <AgentDetailModal
+        agent={selectedSimAgent}
+        completedTasks={selectedCompletedTasks}
+        onClose={() => setSelectedSimAgentId(null)}
+      />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { AGENTS, AGENT_ORDER, AgentId } from './agents';
 
-export type SkillSource = 'codex' | 'connect-ai' | 'hermes';
+export type SkillSource = 'codex' | 'connect-ai' | 'hermes' | 'local';
 
 export interface LocalSkill {
   id: string;
@@ -50,6 +50,15 @@ export const localSkillCatalog: LocalSkill[] = [
     agents: ['developer', 'designer'],
     keywords: ['게임', '움직임', '캐릭터', '상태머신', '애니메이션'],
     source: 'codex',
+  },
+  {
+    id: 'pixel-agent-office-simulator',
+    label: '픽셀 에이전트 오피스 시뮬레이터',
+    category: 'Motion',
+    description: 'LimeZu 스프라이트, CEO 보고 상태 머신, 병렬 보고, 말풍선 충돌 회피, 에이전트 상세 모달',
+    agents: ['ceo', 'developer', 'designer', 'secretary'],
+    keywords: ['pixel', '픽셀', 'office', '오피스', 'simulator', '시뮬레이터', '스프라이트', 'limezu', '말풍선', '상태머신', '병렬', 'ceo'],
+    source: 'local',
   },
   {
     id: 'playwright',
@@ -320,5 +329,6 @@ export function recommendSkillsForAgent(agentId: AgentId, prompt = '', limit = 8
 export function skillSourceLabel(source: SkillSource) {
   if (source === 'codex') return 'Codex Skill';
   if (source === 'hermes') return 'Hermes';
+  if (source === 'local') return 'Local Skill';
   return 'Connect AI Tool';
 }

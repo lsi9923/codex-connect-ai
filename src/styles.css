@@ -594,7 +594,7 @@ select:focus, textarea:focus { border-color: rgba(125,211,252,.58); box-shadow: 
 .sang-grid {
   position: absolute;
   inset: 0;
-  z-index: 2;
+  z-index: 1;
   pointer-events: none;
   opacity: .48;
   background-image:
@@ -605,7 +605,7 @@ select:focus, textarea:focus { border-color: rgba(125,211,252,.58); box-shadow: 
 .sang-vignette {
   position: absolute;
   inset: 0;
-  z-index: 5;
+  z-index: 2;
   pointer-events: none;
   background:
     radial-gradient(ellipse at 50% 45%, transparent 36%, rgba(0,0,0,.58) 100%),
@@ -628,7 +628,7 @@ select:focus, textarea:focus { border-color: rgba(125,211,252,.58); box-shadow: 
 }
 .sang-desk-light {
   position: absolute;
-  z-index: 7;
+  z-index: 3;
   width: 84px;
   height: 18px;
   transform: translate(-50%, 26px);
@@ -644,7 +644,7 @@ select:focus, textarea:focus { border-color: rgba(125,211,252,.58); box-shadow: 
 }
 .sang-ceo-zone {
   position: absolute;
-  z-index: 9;
+  z-index: 3;
   width: 126px;
   min-height: 52px;
   transform: translate(-50%, -50%);
@@ -663,7 +663,7 @@ select:focus, textarea:focus { border-color: rgba(125,211,252,.58); box-shadow: 
 .sang-beams {
   position: absolute;
   inset: 0;
-  z-index: 8;
+  z-index: 4;
   width: 100%;
   height: 100%;
   pointer-events: none;
@@ -784,6 +784,7 @@ select:focus, textarea:focus { border-color: rgba(125,211,252,.58); box-shadow: 
 }
 .sang-speech-bubble {
   position: absolute;
+  z-index: 50;
   left: 50%;
   top: -47px;
   width: 154px;
@@ -824,6 +825,7 @@ select:focus, textarea:focus { border-color: rgba(125,211,252,.58); box-shadow: 
 .sang-speech-bubble em { margin-right: 4px; color: var(--agent-color); font-style: normal; font-size: 11px; }
 .sang-arrival-particle {
   position: absolute;
+  z-index: 20;
   left: 50%;
   top: 62%;
   width: 5px;
@@ -1029,13 +1031,203 @@ select:focus, textarea:focus { border-color: rgba(125,211,252,.58); box-shadow: 
   color: rgba(0,255,65,.68);
   font-weight: 900;
 }
+.sang-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(0,0,0,.58);
+  backdrop-filter: blur(3px);
+  animation: sangOverlayFadeIn .18s ease-out;
+}
+.sang-agent-modal {
+  width: min(440px, 92vw);
+  max-height: min(82vh, 720px);
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  border: 1px solid color-mix(in srgb, var(--agent-color), transparent 54%);
+  border-radius: 10px;
+  color: #e2e8f0;
+  background: rgba(5,8,18,.98);
+  box-shadow: 0 0 42px color-mix(in srgb, var(--agent-color), transparent 82%), 0 10px 34px rgba(0,0,0,.84);
+  font-family: "JetBrains Mono", monospace;
+  animation: sangModalSlideIn .22s cubic-bezier(.23,1,.32,1);
+}
+.sang-agent-modal-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid color-mix(in srgb, var(--agent-color), transparent 84%);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--agent-color), transparent 92%), transparent 64%);
+}
+.sang-modal-sprite {
+  position: relative;
+  overflow: hidden;
+  display: block;
+  flex-shrink: 0;
+}
+.sang-modal-sprite i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  transform-origin: left top;
+  filter: drop-shadow(0 0 7px color-mix(in srgb, var(--agent-color), transparent 42%));
+}
+.sang-agent-modal-head b {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--agent-color);
+  font-size: 15px;
+  text-shadow: 0 0 12px color-mix(in srgb, var(--agent-color), transparent 26%);
+}
+.sang-agent-modal-head small {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255,255,255,.42);
+  font-family: "Press Start 2P", "JetBrains Mono", monospace;
+  font-size: 7px;
+}
+.sang-agent-modal-head em {
+  border: 1px solid rgba(0,255,65,.24);
+  border-radius: 4px;
+  padding: 3px 6px;
+  color: rgba(0,255,65,.72);
+  background: rgba(0,255,65,.08);
+  font-family: "Press Start 2P", "JetBrains Mono", monospace;
+  font-size: 6px;
+  font-style: normal;
+  white-space: nowrap;
+}
+.sang-agent-modal-head button {
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 999px;
+  color: rgba(255,255,255,.62);
+  background: rgba(255,255,255,.06);
+  cursor: pointer;
+}
+.sang-agent-modal-head button:hover {
+  color: #fff;
+  background: rgba(255,255,255,.12);
+}
+.sang-agent-modal-body {
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  gap: 15px;
+  padding: 15px 16px 18px;
+}
+.sang-modal-tagline {
+  margin: 0;
+  border-left: 2px solid color-mix(in srgb, var(--agent-color), transparent 45%);
+  padding-left: 10px;
+  color: rgba(255,255,255,.56);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.sang-agent-modal h3 {
+  margin: 0 0 8px;
+  color: color-mix(in srgb, var(--agent-color), #fff 10%);
+  font-family: "Press Start 2P", "JetBrains Mono", monospace;
+  font-size: 7px;
+  letter-spacing: 1px;
+}
+.sang-modal-status {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 7px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,.025);
+}
+.sang-modal-status i {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+}
+.sang-modal-status b {
+  display: block;
+  margin-bottom: 5px;
+  font-family: "Press Start 2P", "JetBrains Mono", monospace;
+  font-size: 7px;
+  letter-spacing: .5px;
+}
+.sang-modal-status small {
+  display: block;
+  color: rgba(255,255,255,.58);
+  font-size: 10px;
+  line-height: 1.45;
+}
+.sang-modal-specialty {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.sang-modal-specialty span {
+  border: 1px solid color-mix(in srgb, var(--agent-color), transparent 78%);
+  border-radius: 4px;
+  padding: 5px 7px;
+  color: rgba(255,255,255,.58);
+  background: color-mix(in srgb, var(--agent-color), transparent 94%);
+  font-size: 10px;
+}
+.sang-modal-empty {
+  margin: 0;
+  border: 1px dashed rgba(255,255,255,.08);
+  border-radius: 7px;
+  padding: 16px 10px;
+  color: rgba(255,255,255,.32);
+  font-size: 10px;
+  text-align: center;
+}
+.sang-modal-history {
+  display: grid;
+  gap: 6px;
+}
+.sang-modal-history article {
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 7px;
+  padding: 8px 10px;
+  background: rgba(255,255,255,.025);
+}
+.sang-modal-history b {
+  display: block;
+  color: rgba(255,255,255,.76);
+  font-size: 10px;
+  line-height: 1.45;
+}
+.sang-modal-history small {
+  display: block;
+  margin-top: 5px;
+  color: rgba(255,255,255,.32);
+  font-size: 9px;
+}
 @keyframes sangPixelPulse { 50% { opacity: .55; text-shadow: 0 0 20px #00ff41; } }
 @keyframes sangRunningPulse { 50% { box-shadow: 0 0 22px rgba(34,211,238,.22); } }
 @keyframes sangLedBlink { 50% { opacity: .38; } }
 @keyframes sangDeskPulse { 50% { opacity: .48; transform: translate(-50%, 24px) scale(.95); } }
 @keyframes sangRouteFlow { to { stroke-dashoffset: -18; } }
-@keyframes sangCharBob { 50% { transform: translateY(-2px) scale(1.55); } }
+@keyframes sangCharBob { 50% { transform: translateY(-2px) scale(1.4); } }
 @keyframes sangBubbleIn { from { opacity: 0; transform: translateX(-50%) translateY(calc(var(--bubble-offset) + 7px)) scale(.94); } }
+@keyframes sangOverlayFadeIn { from { opacity: 0; } }
+@keyframes sangModalSlideIn { from { opacity: 0; transform: translateY(8px) scale(.98); } }
 @keyframes sangArrivalBurst {
   to {
     opacity: 0;
@@ -1064,6 +1256,8 @@ select:focus, textarea:focus { border-color: rgba(125,211,252,.58); box-shadow: 
   .sang-stage { min-height: 430px; }
   .sang-stage-label em { display: none; }
   .sang-hud { grid-template-columns: repeat(2, minmax(0,1fr)); width: 100%; }
+  .sang-agent-modal-head { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .sang-agent-modal-head em { display: none; }
   .command-grid, .task-grid, .right-col, .hermes-ops-grid, .workbench-grid, .ops-signal-strip, .ops-control-grid, .ops-control-console, .telegram-identity, .reference-grid { grid-template-columns: 1fr; }
   .workbench-grid .task-board, .workbench-grid .reports, .workbench-grid .video-panel { grid-column: auto; }
   .room-card { width: 150px; min-height: 58px; padding: 8px; }
