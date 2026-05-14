@@ -116,6 +116,15 @@ type ConnectAiOpsSettings = {
   dynamicModelDetection: boolean;
 };
 
+type TelegramIdentity = {
+  botName: string;
+  botUsername: string;
+  targetType: string;
+  targetName: string;
+  targetUsername?: string | null;
+  source: string;
+};
+
 const hermesSlashCommands = ['/memory', '/skills', '/tools', '/status', '/usage', '/model', '/browse', '/code', '/schedule'];
 const hermesGateways = ['Telegram', 'Discord', 'Slack', 'Webhooks', 'Email', 'Home Assistant'];
 const hermesLoopLabels = ['업무 관찰', '장기 기억 저장', '스킬 개선 제안', '예약 실행 대기'];
@@ -125,6 +134,14 @@ const defaultConnectAiOpsSettings: ConnectAiOpsSettings = {
   secretaryBridgeMode: 'output_only',
   autoGitSyncApproval: true,
   dynamicModelDetection: true,
+};
+const defaultTelegramIdentity: TelegramIdentity = {
+  botName: '확인 필요',
+  botUsername: 'not-connected',
+  targetType: 'unknown',
+  targetName: '로컬 상태 파일 없음',
+  targetUsername: null,
+  source: 'public/telegram-status.local.json',
 };
 const connectAiSourceBadges = ['P-Reinforce', 'Agent University', 'Auto-Git Sync', 'Dynamic Model Detection'];
 
@@ -550,6 +567,7 @@ function ConnectAiOpsPanel({
   selectAgent,
   opsSettings,
   setOpsSettings,
+  telegramIdentity,
 }: {
   plan: OfficePlan;
   skillSettings: SkillSettings;
@@ -557,6 +575,7 @@ function ConnectAiOpsPanel({
   selectAgent: (id: AgentId) => void;
   opsSettings: ConnectAiOpsSettings;
   setOpsSettings: Dispatch<SetStateAction<ConnectAiOpsSettings>>;
+  telegramIdentity: TelegramIdentity;
 }) {
   const totalSkills = AGENT_ORDER.reduce((sum, id) => sum + (skillSettings[id] || AGENTS[id].suggestedSkills).length, 0);
   const runningCount = plan.tasks.filter((task) => task.status === 'running').length;
@@ -667,6 +686,17 @@ function ConnectAiOpsPanel({
       <div className="source-badges">
         <span><Database size={14} /> lsi9923/connect-ai 원본 신호 반영</span>
         {connectAiSourceBadges.map((badge) => <em key={badge}>{badge}</em>)}
+      </div>
+      <div className="telegram-identity">
+        <div>
+          <strong><Send size={14} /> Telegram 연결 대상</strong>
+          <span>Bot: {telegramIdentity.botName} · @{telegramIdentity.botUsername}</span>
+        </div>
+        <div>
+          <strong>{telegramIdentity.targetType === 'private' ? 'Private chat' : telegramIdentity.targetType}</strong>
+          <span>{telegramIdentity.targetName}{telegramIdentity.targetUsername ? ` · @${telegramIdentity.targetUsername}` : ''}</span>
+        </div>
+        <code>{telegramIdentity.source}</code>
       </div>
       <div className="hermes-ops-strip">
         <span><Cpu size={14} /> Local API 127.0.0.1:8642</span>
@@ -894,10 +924,37 @@ export default function App() {
   const [modelSettings, setModelSettings] = useState<ModelSettings>(defaultModelSettings);
   const [skillSettings, setSkillSettings] = useState<SkillSettings>(() => buildDefaultSkillSettings());
   const [opsSettings, setOpsSettings] = useState<ConnectAiOpsSettings>(defaultConnectAiOpsSettings);
+  const [telegramIdentity, setTelegramIdentity] = useState<TelegramIdentity>(defaultTelegramIdentity);
   const [approvalDecisions, setApprovalDecisions] = useState<Record<string, ApprovalStatus>>({});
   const plan = useMemo(() => makePlan(prompt, seed, modelSettings, skillSettings), [modelSettings, prompt, seed, skillSettings]);
   const selected = AGENTS[activeAgent];
   const selectedSkills = skillSettings[activeAgent] || selected.suggestedSkills;
+
+  useEffect(() => {
+    let alive = true;
+    fetch(`/telegram-status.local.json?t=${Date.now()}`, { cache: 'no-store' })
+      .then((response) => {
+        if (!response.ok) throw new Error(`telegram status ${response.status}`);
+        return response.json() as Promise<Partial<TelegramIdentity>>;
+      })
+      .then((payload) => {
+        if (!alive) return;
+        setTelegramIdentity({
+          botName: payload.botName || defaultTelegramIdentity.botName,
+          botUsername: payload.botUsername || defaultTelegramIdentity.botUsername,
+          targetType: payload.targetType || defaultTelegramIdentity.targetType,
+          targetName: payload.targetName || defaultTelegramIdentity.targetName,
+          targetUsername: payload.targetUsername ?? null,
+          source: payload.source || defaultTelegramIdentity.source,
+        });
+      })
+      .catch(() => {
+        if (alive) setTelegramIdentity(defaultTelegramIdentity);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const updateModel = (id: AgentId, model: string) => {
     setModelSettings((prev) => ({ ...prev, [id]: model }));
@@ -962,6 +1019,7 @@ export default function App() {
             selectAgent={setActiveAgent}
             opsSettings={opsSettings}
             setOpsSettings={setOpsSettings}
+            telegramIdentity={telegramIdentity}
           />
         </div>
         <div className="right-col agent-inspector">

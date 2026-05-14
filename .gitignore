@@ -4,3 +4,4 @@ tsconfig.tsbuildinfo
 .vite/
 .playwright-mcp/
 *.log
+public/telegram-status.local.json

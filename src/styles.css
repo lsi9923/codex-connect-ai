@@ -246,6 +246,11 @@ button { color: inherit; }
 .source-badges span, .source-badges em { display: inline-flex; align-items: center; gap: 7px; min-height: 30px; padding: 6px 9px; border-radius: 8px; font-style: normal; font-size: 12px; font-weight: 900; }
 .source-badges span { color: #dcfce7; border: 1px solid rgba(134,239,172,.22); background: rgba(22,101,52,.16); }
 .source-badges em { color: #fde68a; border: 1px solid rgba(251,191,36,.2); background: rgba(120,53,15,.18); }
+.telegram-identity { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr) auto; gap: 10px; align-items: stretch; margin-bottom: 13px; }
+.telegram-identity > div, .telegram-identity code { min-width: 0; display: grid; align-content: center; gap: 4px; padding: 10px; border: 1px solid rgba(125,211,252,.18); border-radius: 8px; background: rgba(14,165,233,.08); }
+.telegram-identity strong { display: inline-flex; align-items: center; gap: 7px; color: #e0f2fe; font-size: 12px; }
+.telegram-identity span { color: #cbd5e1; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.telegram-identity code { color: #9fb6d0; font-size: 11px; }
 .hermes-ops-strip { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 13px; }
 .hermes-ops-strip span { display: inline-flex; align-items: center; gap: 7px; min-height: 34px; padding: 7px 10px; border: 1px solid rgba(125,211,252,.2); border-radius: 8px; background: rgba(14,165,233,.08); color: #dffafe; font-size: 12px; font-weight: 900; }
 .hermes-ops-grid { display: grid; grid-template-columns: 1fr 1.15fr 1fr; gap: 12px; align-items: stretch; }
@@ -321,7 +326,7 @@ select:focus, textarea:focus { border-color: rgba(125,211,252,.58); box-shadow: 
   .right-col { grid-template-columns: 1fr; }
   .workbench-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
   .workbench-grid .task-board, .workbench-grid .reports, .workbench-grid .video-panel { grid-column: span 2; grid-row: auto; }
-  .ops-signal-strip, .ops-control-grid { grid-template-columns: repeat(3, minmax(0,1fr)); }
+  .ops-signal-strip, .ops-control-grid, .telegram-identity { grid-template-columns: repeat(3, minmax(0,1fr)); }
 }
 @media (max-width: 860px) {
   .app-shell { width: calc(100vw - 18px); }
@@ -329,7 +334,7 @@ select:focus, textarea:focus { border-color: rgba(125,211,252,.58); box-shadow: 
   .hero h1 { font-size: 34px; }
   .office-card { min-height: 640px; }
   .office-floor { height: 540px; }
-  .command-grid, .task-grid, .right-col, .hermes-ops-grid, .workbench-grid, .ops-signal-strip, .ops-control-grid, .ops-control-console, .reference-grid { grid-template-columns: 1fr; }
+  .command-grid, .task-grid, .right-col, .hermes-ops-grid, .workbench-grid, .ops-signal-strip, .ops-control-grid, .ops-control-console, .telegram-identity, .reference-grid { grid-template-columns: 1fr; }
   .workbench-grid .task-board, .workbench-grid .reports, .workbench-grid .video-panel { grid-column: auto; }
   .room-card { width: 150px; min-height: 58px; padding: 8px; }
   .room-card span, .office-progress, .live-status-panel, .game-state-panel, .route-director, .desk-terminal { display: none; }
