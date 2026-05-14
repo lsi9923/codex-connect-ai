@@ -403,6 +403,645 @@ select:focus, textarea:focus { border-color: rgba(125,211,252,.58); box-shadow: 
 .beam.queued { opacity: .2; }
 .beam.done { stroke: rgba(134,239,172,.54); }
 .beam.approval { stroke: rgba(251,191,36,.58); }
+
+/* Manus / sang-ai-office-simulator parity layer */
+.sang-sim-cover { position: absolute; inset: 0; z-index: 40; background: #050810; }
+.sang-sim-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #050810;
+  color: #e2e8f0;
+  font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.sang-sim-root::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 999;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.075) 2px, rgba(0,0,0,.075) 4px);
+}
+.sang-sim-header {
+  height: 48px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 0 16px;
+  border-bottom: 1px solid rgba(0, 255, 65, .12);
+  background: rgba(5, 8, 16, .98);
+  box-shadow: 0 1px 20px rgba(0, 255, 65, .06);
+}
+.sang-brand { min-width: 0; display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+.sang-brand-pixel { color: #00ff41; font-size: 20px; animation: sangPixelPulse 2s ease-in-out infinite; }
+.sang-brand strong {
+  color: #00ff41;
+  font-family: "Press Start 2P", "JetBrains Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-shadow: 0 0 12px #00ff41;
+}
+.sang-brand > span:last-child {
+  color: rgba(0, 255, 65, .45);
+  font-size: 9px;
+  letter-spacing: 3px;
+}
+.sang-hud { display: flex; align-items: center; gap: 16px; }
+.sang-hud-item { display: inline-flex; flex-direction: column; align-items: center; gap: 1px; min-width: 44px; }
+.sang-hud-item small {
+  color: rgba(0, 255, 65, .4);
+  font-family: "Press Start 2P", "JetBrains Mono", monospace;
+  font-size: 6px;
+  letter-spacing: 1px;
+}
+.sang-hud-item b {
+  color: #00ff41;
+  font-family: "Press Start 2P", "JetBrains Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0;
+  text-shadow: 0 0 8px #00ff41;
+}
+.sang-hud-item.active b { color: #22d3ee; text-shadow: 0 0 8px #22d3ee; }
+.sang-mode-button,
+.sang-run-status {
+  min-height: 26px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 4px;
+  font-family: "Press Start 2P", "JetBrains Mono", monospace;
+  font-size: 7px;
+  letter-spacing: .5px;
+  white-space: nowrap;
+}
+.sang-mode-button {
+  border: 1px solid rgba(0, 255, 65, .25);
+  padding: 5px 8px;
+  color: rgba(0, 255, 65, .78);
+  background: rgba(0, 255, 65, .06);
+  cursor: pointer;
+}
+.sang-mode-button:disabled { opacity: .45; cursor: not-allowed; }
+.sang-run-status {
+  border: 1px solid rgba(255,255,255,.08);
+  padding: 4px 10px;
+  color: rgba(255,255,255,.25);
+}
+.sang-run-status.running {
+  border-color: rgba(34,211,238,.3);
+  color: #22d3ee;
+  box-shadow: 0 0 12px rgba(34,211,238,.12);
+  animation: sangRunningPulse 1.5s ease-in-out infinite;
+}
+.sang-run-status i {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+}
+.sang-run-status.running i { animation: sangLedBlink .7s infinite; }
+.sang-sim-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+}
+.sang-stage-panel {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-right: 1px solid rgba(0, 255, 65, .08);
+}
+.sang-stage-label {
+  flex: 0 0 auto;
+  min-height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: rgba(0, 255, 65, .45);
+  font-family: "Press Start 2P", "JetBrains Mono", monospace;
+  font-size: 7px;
+  letter-spacing: 2px;
+}
+.sang-stage-label div { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.sang-stage-label b {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(167,139,250,.35);
+  border-radius: 3px;
+  padding: 2px 5px;
+  color: #a78bfa;
+  background: rgba(167,139,250,.12);
+  font-size: 6px;
+  letter-spacing: .5px;
+}
+.sang-stage-label em {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255,255,255,.45);
+  font-style: normal;
+}
+.sang-stage-frame {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid rgba(0,255,65,.1);
+  border-radius: 8px;
+  background: #050810;
+  box-shadow: 0 0 30px rgba(0,255,65,.04), inset 0 0 30px rgba(0,0,0,.3);
+}
+.sang-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #050810;
+  isolation: isolate;
+}
+.sang-office-map {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 44%;
+  image-rendering: pixelated;
+  opacity: .9;
+  filter: saturate(1.08) contrast(1.05) brightness(.74);
+  user-select: none;
+}
+.sang-map-tint {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(5,8,16,.08), rgba(5,8,16,.28) 64%, rgba(5,8,16,.48)),
+    radial-gradient(ellipse at 48% 52%, rgba(34,211,238,.18), transparent 38%);
+}
+.sang-grid {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: .48;
+  background-image:
+    linear-gradient(rgba(0,255,65,.024) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,255,65,.024) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+.sang-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 45%, transparent 36%, rgba(0,0,0,.58) 100%),
+    linear-gradient(90deg, rgba(5,8,16,.28), transparent 16%, transparent 84%, rgba(5,8,16,.28));
+}
+.sang-wall-sign {
+  position: absolute;
+  z-index: 6;
+  left: 50%;
+  top: 5.5%;
+  transform: translateX(-50%);
+  border: 2px solid rgba(134,239,172,.55);
+  padding: 5px 9px;
+  color: rgba(226,232,240,.82);
+  background: rgba(5,8,16,.58);
+  font-size: 11px;
+  font-weight: 1000;
+  letter-spacing: 1px;
+  text-shadow: 0 0 10px rgba(134,239,172,.45);
+}
+.sang-desk-light {
+  position: absolute;
+  z-index: 7;
+  width: 84px;
+  height: 18px;
+  transform: translate(-50%, 26px);
+  border-radius: 50%;
+  background: radial-gradient(ellipse, color-mix(in srgb, var(--agent-color), transparent 42%), transparent 72%);
+  opacity: .22;
+  transition: opacity .24s ease, transform .24s ease;
+}
+.sang-desk-light.active {
+  opacity: .86;
+  transform: translate(-50%, 24px) scale(1.15);
+  animation: sangDeskPulse 1.4s ease-in-out infinite;
+}
+.sang-ceo-zone {
+  position: absolute;
+  z-index: 9;
+  width: 126px;
+  min-height: 52px;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  border: 1px solid rgba(34,211,238,.42);
+  border-radius: 8px;
+  background: rgba(5,8,16,.72);
+  color: #e0f2fe;
+  box-shadow: 0 0 36px rgba(34,211,238,.22), inset 0 0 20px rgba(34,211,238,.1);
+  pointer-events: none;
+}
+.sang-ceo-zone b { font-size: 12px; }
+.sang-ceo-zone small { color: rgba(226,232,240,.62); font-size: 9px; }
+.sang-beams {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.sang-beams line {
+  stroke-width: 2.2px;
+  stroke-dasharray: 8 10;
+  opacity: .72;
+  filter: drop-shadow(0 0 7px currentColor);
+  animation: sangRouteFlow .85s linear infinite;
+}
+.sang-pixel-agent {
+  position: absolute;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  color: inherit;
+  outline: none;
+  transition: left .08s linear, top .08s linear, filter .22s ease;
+  will-change: left, top;
+}
+.sang-pixel-agent:focus-visible .sang-nameplate {
+  outline: 2px solid color-mix(in srgb, var(--agent-color), #ffffff 30%);
+  outline-offset: 2px;
+}
+.sang-pixel-sprite {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 6px 7px rgba(0,0,0,.86));
+  animation: sangCharBob 2.6s ease-in-out infinite;
+}
+.sang-pixel-agent.active .sang-pixel-sprite {
+  filter: drop-shadow(0 0 7px color-mix(in srgb, var(--agent-color), transparent 12%)) drop-shadow(0 7px 8px rgba(0,0,0,.86));
+  animation-duration: .75s;
+}
+.sang-agent-shadow {
+  position: absolute;
+  left: 50%;
+  bottom: 27px;
+  width: 58px;
+  height: 10px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse, color-mix(in srgb, var(--agent-color), transparent 58%), transparent 72%);
+  opacity: .28;
+}
+.sang-pixel-agent.active .sang-agent-shadow { width: 72px; opacity: .9; }
+.sang-status-led {
+  position: absolute;
+  top: 0;
+  right: 5px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #2d3748;
+  opacity: .35;
+}
+.sang-pixel-agent.active .sang-status-led {
+  background: var(--agent-color);
+  opacity: 1;
+  box-shadow: 0 0 10px var(--agent-color);
+  animation: sangLedBlink .7s infinite;
+}
+.sang-work-progress {
+  position: absolute;
+  top: -13px;
+  left: 50%;
+  width: 74px;
+  height: 5px;
+  transform: translateX(-50%);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--agent-color), transparent 55%);
+  border-radius: 3px;
+  background: rgba(0,0,0,.74);
+}
+.sang-work-progress i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--agent-color), color-mix(in srgb, var(--agent-color), #ffffff 20%));
+  box-shadow: 0 0 8px var(--agent-color);
+  transition: width .1s linear;
+}
+.sang-nameplate {
+  position: absolute;
+  left: 50%;
+  bottom: -2px;
+  transform: translateX(-50%);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 76px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.sang-nameplate b {
+  color: var(--agent-color);
+  font-size: 10px;
+  font-weight: 900;
+  text-shadow: 0 0 8px var(--agent-color);
+}
+.sang-nameplate small {
+  border: 1px solid color-mix(in srgb, var(--agent-color), transparent 70%);
+  border-radius: 3px;
+  padding: 1px 4px;
+  color: color-mix(in srgb, var(--agent-color), #ffffff 15%);
+  background: color-mix(in srgb, var(--agent-color), transparent 88%);
+  font-family: "Press Start 2P", "JetBrains Mono", monospace;
+  font-size: 5px;
+  letter-spacing: .5px;
+}
+.sang-speech-bubble {
+  position: absolute;
+  left: 50%;
+  top: -47px;
+  width: 154px;
+  min-height: 42px;
+  max-height: 66px;
+  transform: translateX(-50%) translateY(var(--bubble-offset));
+  display: block;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--agent-color), transparent 48%);
+  border-radius: 9px;
+  padding: 6px 9px;
+  color: #dbeafe;
+  background: rgba(5,8,18,.94);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--agent-color), transparent 78%), 0 2px 10px rgba(0,0,0,.7);
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1.45;
+  text-align: left;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  backdrop-filter: blur(6px);
+  animation: sangBubbleIn .22s cubic-bezier(.23,1,.32,1);
+}
+.sang-speech-bubble::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  width: 10px;
+  height: 10px;
+  transform: translateX(-50%) rotate(45deg);
+  border-right: 1px solid color-mix(in srgb, var(--agent-color), transparent 48%);
+  border-bottom: 1px solid color-mix(in srgb, var(--agent-color), transparent 48%);
+  background: rgba(5,8,18,.94);
+}
+.sang-speech-bubble em { margin-right: 4px; color: var(--agent-color); font-style: normal; font-size: 11px; }
+.sang-arrival-particle {
+  position: absolute;
+  left: 50%;
+  top: 62%;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--agent-color);
+  box-shadow: 0 0 10px var(--agent-color);
+  pointer-events: none;
+  animation: sangArrivalBurst .65s ease-out forwards;
+}
+.sang-control-panel {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden auto;
+  background: rgba(8, 12, 24, .98);
+}
+.sang-control-panel section {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid rgba(0,255,65,.06);
+}
+.sang-control-panel strong {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: rgba(0,255,65,.66);
+  font-family: "Press Start 2P", "JetBrains Mono", monospace;
+  font-size: 7px;
+  letter-spacing: 1.5px;
+}
+.sang-control-panel strong em {
+  margin-left: auto;
+  border-radius: 3px;
+  padding: 2px 6px;
+  color: #22d3ee;
+  background: rgba(34,211,238,.08);
+  font-style: normal;
+}
+.sang-control-panel textarea {
+  width: 100%;
+  resize: none;
+  outline: none;
+  border: 1px solid rgba(0,255,65,.18);
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: #e2e8f0;
+  background: rgba(0,255,65,.03);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.sang-control-panel textarea:focus { border-color: rgba(0,255,65,.45); box-shadow: 0 0 0 3px rgba(0,255,65,.07); }
+.sang-command-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+.sang-command-actions button,
+.sang-quick-cmds button {
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease, color .15s ease, opacity .15s ease;
+}
+.sang-command-actions button {
+  min-height: 30px;
+  border: 1px solid rgba(0,255,65,.35);
+  padding: 7px 10px;
+  color: #00ff41;
+  background: rgba(0,255,65,.1);
+  font-family: "Press Start 2P", "JetBrains Mono", monospace;
+  font-size: 8px;
+  letter-spacing: 1px;
+}
+.sang-command-actions button + button {
+  border-color: rgba(34,211,238,.25);
+  color: #22d3ee;
+  background: rgba(34,211,238,.08);
+  font-size: 7px;
+}
+.sang-command-actions button:disabled,
+.sang-quick-cmds button:disabled { opacity: .35; cursor: not-allowed; }
+.sang-quick-cmds { display: grid; gap: 3px; }
+.sang-quick-cmds button {
+  width: 100%;
+  min-height: 24px;
+  border: 1px solid rgba(255,255,255,.06);
+  padding: 5px 8px;
+  color: rgba(255,255,255,.52);
+  background: rgba(255,255,255,.02);
+  font-size: 9px;
+  text-align: left;
+}
+.sang-quick-cmds button:hover:not(:disabled) {
+  border-color: rgba(0,255,65,.2);
+  color: rgba(0,255,65,.86);
+  background: rgba(0,255,65,.05);
+}
+.sang-current-command {
+  border-left: 2px solid rgba(0,255,65,.35);
+  border-radius: 0 4px 4px 0;
+  padding: 6px 8px;
+  background: rgba(0,255,65,.04);
+}
+.sang-current-command small {
+  display: block;
+  margin-bottom: 3px;
+  color: rgba(0,255,65,.4);
+  font-family: "Press Start 2P", "JetBrains Mono", monospace;
+  font-size: 6px;
+}
+.sang-current-command p {
+  margin: 0;
+  color: rgba(255,255,255,.66);
+  font-size: 9px;
+  line-height: 1.4;
+}
+.sang-agent-cards { display: grid; gap: 4px; }
+.sang-agent-card {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  gap: 3px 8px;
+  align-items: center;
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 6px;
+  padding: 5px 7px;
+  color: inherit;
+  background: rgba(255,255,255,.02);
+  text-align: left;
+}
+.sang-agent-card.active {
+  border-color: color-mix(in srgb, var(--agent-color), transparent 70%);
+  background: color-mix(in srgb, var(--agent-color), transparent 94%);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--agent-color), transparent 86%);
+}
+.sang-agent-card b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255,255,255,.86);
+  font-size: 10px;
+}
+.sang-agent-card small {
+  justify-self: end;
+  border: 1px solid color-mix(in srgb, var(--agent-color), transparent 72%);
+  border-radius: 3px;
+  padding: 2px 5px;
+  color: color-mix(in srgb, var(--agent-color), #ffffff 10%);
+  font-family: "Press Start 2P", "JetBrains Mono", monospace;
+  font-size: 6px;
+  white-space: nowrap;
+}
+.sang-agent-card em {
+  grid-column: 2 / span 2;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255,255,255,.38);
+  font-size: 9px;
+  font-style: normal;
+}
+.sang-mini-sprite-wrap {
+  grid-row: span 2;
+  width: 26px;
+  height: 38px;
+  overflow: hidden;
+  display: block;
+  position: relative;
+}
+.sang-mini-sprite {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 48px;
+  height: 96px;
+  display: block;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  transform: scale(.45);
+  transform-origin: left bottom;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,.7));
+}
+.sang-log-section { flex: 1 1 auto; min-height: 0; }
+.sang-log-section > div {
+  max-height: 190px;
+  overflow: auto;
+  display: grid;
+  gap: 3px;
+}
+.sang-log-section p {
+  margin: 0;
+  border-left: 1px solid rgba(0,255,65,.08);
+  border-radius: 3px;
+  padding: 4px 6px;
+  color: rgba(255,255,255,.42);
+  background: rgba(255,255,255,.02);
+  font-size: 9px;
+  line-height: 1.35;
+}
+.sang-log-section p span {
+  margin-right: 6px;
+  color: rgba(0,255,65,.68);
+  font-weight: 900;
+}
+@keyframes sangPixelPulse { 50% { opacity: .55; text-shadow: 0 0 20px #00ff41; } }
+@keyframes sangRunningPulse { 50% { box-shadow: 0 0 22px rgba(34,211,238,.22); } }
+@keyframes sangLedBlink { 50% { opacity: .38; } }
+@keyframes sangDeskPulse { 50% { opacity: .48; transform: translate(-50%, 24px) scale(.95); } }
+@keyframes sangRouteFlow { to { stroke-dashoffset: -18; } }
+@keyframes sangCharBob { 50% { transform: translateY(-2px) scale(1.55); } }
+@keyframes sangBubbleIn { from { opacity: 0; transform: translateX(-50%) translateY(calc(var(--bubble-offset) + 7px)) scale(.94); } }
+@keyframes sangArrivalBurst {
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(var(--angle)) translateX(var(--dist)) scale(.2);
+  }
+}
 @media (max-width: 1280px) {
   .layout { grid-template-columns: 1fr; }
   .agent-inspector { position: static; }

@@ -41,6 +41,10 @@
     "status": "passed",
     "evidence": "Cloned https://github.com/lsi9923/sang-ai-office-simulator to D:\\connect-ai-office-upgrade-work\\sang-ai-office-simulator at 191430a and adapted its pixel office simulator into src/SangOfficeSimulator.tsx. The current app now uses that stage as the visible office floor, with sequential/parallel reporting, desk-to-CEO-to-desk motion, per-agent speech bubbles, collision offsets, and sourceRepo in render_game_to_text. npm test and npm run build passed. Chrome DevTools verified payload mode/sourceRepo, moving agent samples, desktop stage size, mobile no horizontal overflow, no console error/warn/issue, and screenshots at D:\\connect-ai-office-upgrade-work\\connect-ai-sang-simulator.png and D:\\connect-ai-office-upgrade-work\\connect-ai-sang-simulator-mobile.png."
   },
+  "manusDashboardParityPass": {
+    "status": "passed",
+    "evidence": "Checked https://connectai-7gxqex9s.manus.space/ with Browser Use/Chrome DevTools; public URL redirects to Manus login, but PublicGetWebDevProject exposed project id 7GXqEX9S442FPxx7zqYqED and title Connect AI Office Simulator. Reworked src/SangOfficeSimulator.tsx to match the sang-ai-office-simulator dashboard: CONNECT AI / OFFICE SIMULATOR HUD, office floor, CEO command panel, quick commands, agent status, activity log, local Connect AI map asset, and local pixel character sprite sheets. Browser verification confirmed map natural size 2912x1440, 7 sprite agents, 7 moving speech bubbles, 5 quick commands, render_game_to_text sourceRepos/projectUrl/manusProject payload, synchronized character and bubble movement delta 167.4px, no console error/warn/issue, and screenshots saved to D:\\connect-ai-office-upgrade-work\\connect-ai-manus-parity-desktop.png, D:\\connect-ai-office-upgrade-work\\connect-ai-manus-stage-focused.png, and D:\\connect-ai-office-upgrade-work\\connect-ai-manus-parity-mobile.png."
+  },
   "ultragoalCheckpoint": {
     "status": "not_checkpointed",
     "evidence": "omx ultragoal checkpoint requires a fresh Codex get_goal snapshot, but this desktop thread exposes no get_goal/update_goal tools. No synthetic Codex goal snapshot was created."

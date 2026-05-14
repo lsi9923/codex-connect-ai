@@ -36,6 +36,10 @@ assert(appTsx.includes('speechBubbleLayouts') && appTsx.includes('taskSpeechLine
 assert(appTsx.includes('movingSpeechBubblePosition') && appTsx.includes('motionPhaseProgress') && appTsx.includes('requestAnimationFrame') && appTsx.includes('moving-speech-bubble'), '활성 직원 말풍선은 애니메이션 좌표를 따라 위쪽에서 같이 움직여야 합니다.');
 assert(appTsx.includes('motionAgent={engine.agent}') && officeStageTsx.includes('motionRef') && officeStageTsx.includes('motionPhase') && officeStageTsx.includes('motionProgress'), '3D 캐릭터와 HTML 말풍선은 같은 직원/단계/진행률 상태를 공유해야 합니다.');
 assert(appTsx.includes('SangOfficeSimulator') && sangSimTsx.includes('https://github.com/lsi9923/sang-ai-office-simulator') && sangSimTsx.includes('processParallel') && sangSimTsx.includes('computeBubbleOffsets') && stylesCss.includes('sang-sim-cover'), 'lsi9923/sang-ai-office-simulator 기반 시뮬레이션을 현재 무대 크기에 맞춰 포함해야 합니다.');
+assert(sangSimTsx.includes('https://connectai-7gxqex9s.manus.space/') && sangSimTsx.includes('7GXqEX9S442FPxx7zqYqED'), 'Manus 공개 프로젝트 식별자와 기준 URL이 시뮬레이션 payload에 있어야 합니다.');
+assert(sangSimTsx.includes('/connect-ai/assets/map.jpeg') && sangSimTsx.includes('/connect-ai/pixel/characters') && sangSimTsx.includes('SPRITE_CONFIG'), '원본 Connect AI 맵과 픽셀 스프라이트 자산을 로컬 시뮬레이션에 사용해야 합니다.');
+assert(sangSimTsx.includes('QUICK_CMDS') && sangSimTsx.includes('sang-quick-command') && sangSimTsx.includes('AGENT STATUS') && sangSimTsx.includes('ACTIVITY LOG'), 'Manus형 우측 운영 패널에는 빠른 명령, 직원 상태, 활동 로그가 있어야 합니다.');
+assert(sangSimTsx.includes('sang-speech-bubble') && sangSimTsx.includes('sang-pixel-agent') && sangSimTsx.includes('backgroundPosition'), '직원별 말풍선은 스프라이트 캐릭터 컨테이너 안에서 함께 움직여야 합니다.');
 assert(appTsx.includes('통합 업무 말풍선') && !appTsx.includes('className="route-director"'), '직원 이동 상태와 업무 상태는 별도 중앙 말풍선이 아니라 직원별 통합 말풍선 하나로 보여야 합니다.');
 assert(!appTsx.includes('work-packet') && !appTsx.includes('packet-a'), '전략/분석/보고 같은 떠다니는 보조 라벨은 직원 통합 말풍선과 중복되므로 없어야 합니다.');
 assert(appTsx.includes('OfficeStage3D'), 'Three.js 3D 사무실 무대가 앱에 연결되어야 합니다.');
