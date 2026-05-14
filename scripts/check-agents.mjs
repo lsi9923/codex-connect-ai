@@ -28,6 +28,8 @@ assert(appTsx.includes('SkillEditor') && appTsx.includes('전 직원 추천 스�
 assert(appTsx.includes('PROFILE_STORAGE_KEY') && appTsx.includes('profileOverrides') && appTsx.includes('profile-edit-grid'), '직원 프로필 이름/사진 편집값은 저장되고 화면 전체에 연결되어야 합니다.');
 assert(appTsx.includes('task-agent-profile') && appTsx.includes('task-avatar') && stylesCss.includes('task-agent-profile'), '직원별 작업 카드에는 프로필 사진과 표시 이름이 보여야 합니다.');
 assert(appTsx.includes('taskOpsRows') && appTsx.includes('업무 관찰') && appTsx.includes('장기 기억 저장') && appTsx.includes('스킬 개선 제안') && appTsx.includes('예약 실행 대기') && stylesCss.includes('task-ops-panel'), '직원별 작업 카드는 클릭한 직원의 업무 관찰/장기 기억/스킬 개선/예약 실행 상태를 보여야 합니다.');
+assert(appTsx.includes('RevenueBoard') && appTsx.includes('수익/번돈 확인') && appTsx.includes('monthlyRevenueTarget') && appTsx.includes('YouTube Studio 수익 확인') && stylesCss.includes('revenue-board'), '유튜브 참고 흐름처럼 전체 수익/번돈 확인 패널이 필요합니다.');
+assert(appTsx.includes('task-agent-ops-grid') && appTsx.includes('mini-profile-card') && appTsx.includes('mini-learning-card') && appTsx.includes('mini-gateway-card') && appTsx.includes('Revenue Check') && appTsx.includes('task-money'), '작업 카드 클릭 시 선택 직원 전용 Profiles/Closed Learning Loop/Gateways/Revenue 미니 패널이 필요합니다.');
 assert(sangSimTsx.includes('agentProfiles') && sangSimTsx.includes('profileImage: resolveAgentProfile'), '시뮬레이션 디버그 payload도 편집된 직원 이름과 사진을 노출해야 합니다.');
 assert(appTsx.includes('ConnectAiOpsPanel') && appTsx.includes('Closed Learning Loop'), 'Connect AI/Hermes 운영 레이어가 필요합니다.');
 assert(appTsx.includes('defaultConnectAiOpsSettings') && appTsx.includes('autoCycleEnabled: false'), '24시간 업무는 사용자가 켜기 전 대기 상태여야 합니다.');

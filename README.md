@@ -10,6 +10,8 @@ React + Vite 기반의 Connect AI 운영 화면입니다. CEO가 목표를 내�
 - CEO 방이 하단에 분리된 `Office_Design_2` 픽셀 배경 맵 적용
 - 직원별 작업 카드와 실시간 보고 로그
 - 작업 카드 클릭 시 업무 관찰, 장기 기억 저장, 스킬 개선 제안, 예약 실행 대기 상태 표시
+- 수익/번돈 확인 패널: YouTube/웹사이트/자동화/Telegram 상품별 확인 금액과 월 목표 대비 진행률 표시
+- 작업 카드 클릭 시 선택 직원 전용 `Profiles / Closed Learning Loop / Gateways & Schedules / Revenue Check` 미니 패널 표시
 - 직원별 모델 선택과 스킬 직접 편집
 - 직원 프로필 이름/사진 URL 편집, 작업 카드와 시뮬레이션 이름표 동기화
 - `pixel-agent-office-simulator` 로컬 스킬 연동 및 `skills/pixel-agent-office-simulator.skill` 패키지 포함
@@ -45,6 +47,8 @@ npm run build
 - 10명 에이전트 구조 유지
 - 3D/픽셀 무대 payload 확인
 - 직원별 말풍선과 이동 상태 동기화
+- 수익/번돈 확인 패널과 직원별 Revenue Check 표시
+- 선택 직원 전용 Profiles/Closed Learning Loop/Gateways 미니 패널 표시
 - `24시간 업무` 사용자 제어 상태 유지
 - Telegram 대상 표시
 - `pixel-agent-office-simulator` 추천/기본 스킬 연결

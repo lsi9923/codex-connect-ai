@@ -9,6 +9,7 @@ import {
   Cpu,
   Database,
   DoorOpen,
+  DollarSign,
   FileText,
   FolderKanban,
   GitBranch,
@@ -27,6 +28,7 @@ import {
   SlidersHorizontal,
   Smartphone,
   Sparkles,
+  TrendingUp,
   UserPen,
   Workflow,
   Wand2,
@@ -142,6 +144,78 @@ function taskOpsRows(task: AgentTask) {
       detail: approval ? '승인 후 Telegram/GitHub 게이트 실행' : '다음 24시간 루프에 재투입',
     },
   ];
+}
+
+type RevenueStreamTone = 'confirmed' | 'pending' | 'projected';
+
+type RevenueStream = {
+  label: string;
+  owner: AgentId;
+  source: string;
+  value: number;
+  target: number;
+  tone: RevenueStreamTone;
+};
+
+const monthlyRevenueTarget = 10_000_000;
+const baseRevenueByAgent: Partial<Record<AgentId, number>> = {
+  youtube: 1_850_000,
+  instagram: 780_000,
+  designer: 620_000,
+  developer: 2_400_000,
+  business: 2_100_000,
+  secretary: 540_000,
+  editor: 430_000,
+  writer: 960_000,
+  researcher: 820_000,
+};
+
+function formatWon(value: number) {
+  if (value >= 100_000_000) return `${Math.round(value / 100_000_000).toLocaleString('ko-KR')}억`;
+  if (value >= 10_000) return `${Math.round(value / 10_000).toLocaleString('ko-KR')}만 원`;
+  return `${Math.round(value).toLocaleString('ko-KR')}원`;
+}
+
+function taskRevenueValue(task: AgentTask) {
+  const base = baseRevenueByAgent[task.agent] || 360_000;
+  const statusMultiplier = task.status === 'done' ? 1 : task.status === 'approval' ? 0.84 : task.status === 'running' ? 0.62 : 0.24;
+  return Math.round((base * statusMultiplier * clampPercent(task.progress)) / 100 / 10_000) * 10_000;
+}
+
+function planRevenueSnapshot(plan: OfficePlan) {
+  const taskMap = new Map(plan.tasks.map((task) => [task.agent, task]));
+  const makeStream = (label: string, owner: AgentId, source: string, target: number): RevenueStream => {
+    const task = taskMap.get(owner);
+    const value = task ? taskRevenueValue(task) : 0;
+    const tone: RevenueStreamTone = !task
+      ? 'projected'
+      : task.status === 'done'
+        ? 'confirmed'
+        : task.status === 'approval'
+          ? 'pending'
+          : 'projected';
+    return { label, owner, source, value, target, tone };
+  };
+  const streams = [
+    makeStream('YouTube/Adsense', 'youtube', 'YouTube Studio 수익 확인', 3_200_000),
+    makeStream('수익성 웹사이트', 'business', '제휴·콘텐츠 매출 KPI', 2_600_000),
+    makeStream('자동화 개발 납품', 'developer', '웹앱/자동화 산출물', 2_400_000),
+    makeStream('카피·랜딩 전환', 'writer', '랜딩/스크립트 전환 매출', 1_000_000),
+    makeStream('Telegram 보고 상품', 'secretary', '승인형 보고/운영 대행', 800_000),
+  ];
+  const confirmed = streams.filter((stream) => stream.tone === 'confirmed').reduce((sum, stream) => sum + stream.value, 0);
+  const pending = streams.filter((stream) => stream.tone === 'pending').reduce((sum, stream) => sum + stream.value, 0);
+  const projected = streams.reduce((sum, stream) => sum + stream.value, 0);
+  const agentValues = Object.fromEntries(plan.tasks.map((task) => [task.agent, taskRevenueValue(task)])) as Partial<Record<AgentId, number>>;
+  return {
+    streams,
+    confirmed,
+    pending,
+    projected,
+    target: monthlyRevenueTarget,
+    progress: clampPercent((projected / monthlyRevenueTarget) * 100),
+    agentValues,
+  };
 }
 
 type SpeechBubbleLayout = {
@@ -796,6 +870,7 @@ function ConnectAiOpsPanel({
   const activeTask = plan.tasks.find((task) => task.agent === activeAgent);
   const activeSkillCount = (skillSettings[activeAgent] || AGENTS[activeAgent].suggestedSkills).length;
   const memoryPressure = Math.min(96, 42 + plan.reports.length * 4 + runningCount * 5);
+  const revenue = planRevenueSnapshot(plan);
   const learningRows = hermesLoopLabels.map((label, idx) => ({
     label,
     value: Math.min(98, memoryPressure - idx * 9 + (idx === 2 ? activeSkillCount : 0)),
@@ -915,6 +990,7 @@ function ConnectAiOpsPanel({
         <span><Cpu size={14} /> Local API 127.0.0.1:8642</span>
         <span><Brain size={14} /> Memory {memoryPressure}%</span>
         <span><Layers3 size={14} /> Skills {totalSkills}개</span>
+        <span><DollarSign size={14} /> 수익 확인 {formatWon(revenue.projected)} / {formatWon(revenue.target)}</span>
         <span><Send size={14} /> Gateways {hermesGateways.length}/16 표시</span>
       </div>
 
@@ -974,6 +1050,50 @@ function ConnectAiOpsPanel({
   );
 }
 
+function RevenueBoard({
+  plan,
+  profileOverrides,
+}: {
+  plan: OfficePlan;
+  profileOverrides: AgentProfileOverrides;
+}) {
+  const revenue = planRevenueSnapshot(plan);
+
+  return (
+    <section className="revenue-board glass">
+      <div className="section-title"><DollarSign size={18} /><span>수익/번돈 확인</span></div>
+      <div className="revenue-overview">
+        <div className="revenue-hero">
+          <span>이번 루프 확인 금액</span>
+          <strong>{formatWon(revenue.projected)}</strong>
+          <small>월 목표 {formatWon(revenue.target)} 대비 {revenue.progress}% · 결제 API 연동 전에는 운영 시뮬레이션 상태로 표시</small>
+          <i><b style={{ width: `${revenue.progress}%` }} /></i>
+        </div>
+        <div className="revenue-kpis">
+          <span><b>{formatWon(revenue.confirmed)}</b><small>완료 산출물 기반 확정</small></span>
+          <span><b>{formatWon(revenue.pending)}</b><small>승인 대기 수익</small></span>
+          <span><b>{plan.tasks.filter((task) => task.status !== 'queued').length}명</b><small>수익 루프 참여 직원</small></span>
+        </div>
+      </div>
+      <div className="revenue-streams">
+        {revenue.streams.map((stream) => {
+          const owner = AGENTS[stream.owner];
+          const profile = resolveAgentProfile(owner, profileOverrides);
+          const pct = clampPercent((stream.value / stream.target) * 100);
+          return (
+            <div className={`revenue-stream ${stream.tone}`} key={stream.label} style={{ '--agent-color': owner.color } as CSSProperties}>
+              <span>{stream.label}<em>{stream.tone === 'confirmed' ? '확정' : stream.tone === 'pending' ? '승인 대기' : '예상'}</em></span>
+              <strong>{formatWon(stream.value)}</strong>
+              <small>{profile.name} · {stream.source}</small>
+              <i><b style={{ width: `${pct}%` }} /></i>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function TaskBoard({
   plan,
   activeAgent,
@@ -989,6 +1109,31 @@ function TaskBoard({
   const selectedAgent = AGENTS[selectedTask.agent];
   const selectedProfile = resolveAgentProfile(selectedAgent, profileOverrides);
   const selectedOpsRows = taskOpsRows(selectedTask);
+  const revenue = planRevenueSnapshot(plan);
+  const selectedRevenue = revenue.agentValues[selectedTask.agent] || taskRevenueValue(selectedTask);
+  const selectedRevenuePct = clampPercent((selectedRevenue / monthlyRevenueTarget) * 100);
+  const selectedGatewayRows = [
+    {
+      label: 'Telegram',
+      value: selectedTask.approvalRequired ? 'approval' : 'armed',
+      detail: selectedTask.approvalRequired ? '대표 승인 후 보고 전송' : '보고 준비 완료',
+    },
+    {
+      label: 'Memory',
+      value: selectedTask.status === 'done' ? 'saved' : 'queue',
+      detail: selectedTask.artifact,
+    },
+    {
+      label: 'Skill Forge',
+      value: selectedTask.status === 'queued' ? 'candidate' : 'active',
+      detail: `${selectedTask.skills[0]} 개선 후보`,
+    },
+    {
+      label: 'Schedule',
+      value: selectedTask.status === 'approval' ? 'waiting' : '24h loop',
+      detail: selectedTask.status === 'approval' ? '승인 뒤 예약 실행' : '다음 자율 루프 대기',
+    },
+  ];
 
   return (
     <section className="task-board glass">
@@ -1014,12 +1159,53 @@ function TaskBoard({
           ))}
         </div>
       </div>
+      <div className="task-agent-ops-grid" style={{ '--agent-color': selectedAgent.color } as CSSProperties}>
+        <div className="mini-profile-card">
+          <strong><Settings2 size={14} /> Profiles</strong>
+          <div>
+            <span className="mini-profile-avatar">
+              {selectedProfile.profileImage ? <img src={selectedProfile.profileImage} alt="" /> : <em>{selectedAgent.emoji}</em>}
+            </span>
+            <b>{selectedProfile.name}</b>
+            <small>{selectedAgent.role} · {selectedTask.priority}</small>
+          </div>
+          <p>{modelLabel(selectedTask.model)} · {selectedTask.skills.length} skills · {taskStatusLabel[selectedTask.status]}</p>
+        </div>
+        <div className="mini-learning-card">
+          <strong><Brain size={14} /> Closed Learning Loop</strong>
+          {selectedOpsRows.map((row) => (
+            <div className={`mini-loop-row ${row.state}`} key={row.label}>
+              <span>{row.label}</span>
+              <i><b style={{ width: `${row.value}%` }} /></i>
+              <em>{row.value}%</em>
+            </div>
+          ))}
+        </div>
+        <div className="mini-gateway-card">
+          <strong><Radio size={14} /> Gateways & Schedules</strong>
+          {selectedGatewayRows.map((row) => (
+            <span key={row.label}>
+              <b>{row.label}</b>
+              <em>{row.value}</em>
+              <small>{row.detail}</small>
+            </span>
+          ))}
+        </div>
+        <div className="mini-revenue-card">
+          <strong><TrendingUp size={14} /> Revenue Check</strong>
+          <b>{formatWon(selectedRevenue)}</b>
+          <small>{selectedProfile.name} 이번 루프 수익 기여 · 월 목표 대비 {selectedRevenuePct}%</small>
+          <i><b style={{ width: `${selectedRevenuePct}%` }} /></i>
+          <span><DollarSign size={13} /> YouTube/웹사이트/자동화 매출판에 반영</span>
+        </div>
+      </div>
       <div className="task-grid">
         {plan.tasks.map((task) => {
           const agent = AGENTS[task.agent];
           const profile = resolveAgentProfile(agent, profileOverrides);
           const opsRows = taskOpsRows(task);
           const selected = selectedTask.id === task.id;
+          const taskRevenue = revenue.agentValues[task.agent] || taskRevenueValue(task);
           return (
             <button key={task.id} className={`task-card ${task.status} ${selected ? 'selected' : ''}`} onClick={() => selectAgent(task.agent)} style={{ borderColor: agent.color, '--agent-color': agent.color } as CSSProperties}>
               <span className="task-agent-profile">
@@ -1041,6 +1227,7 @@ function TaskBoard({
                   </span>
                 ))}
               </span>
+              <span className="task-money"><DollarSign size={13} /> 수익 기여 {formatWon(taskRevenue)}</span>
               <span className="task-model"><Cpu size={13} /> {modelLabel(task.model)}</span>
               <span className="task-skills"><Zap size={13} /> {task.skills.slice(0, 4).join(' · ')}</span>
               <span className="task-output"><FileText size={13} /> {task.output}</span>
@@ -1330,6 +1517,7 @@ export default function App() {
           />
         </div>
         <div className="workbench-grid">
+          <RevenueBoard plan={plan} profileOverrides={profileOverrides} />
           <TaskBoard plan={plan} activeAgent={activeAgent} selectAgent={setActiveAgent} profileOverrides={profileOverrides} />
           <Reports plan={plan} />
           <ApprovalPanel approvals={plan.approvals} decisions={approvalDecisions} respondApproval={(id, status) => setApprovalDecisions((prev) => ({ ...prev, [id]: status }))} />
