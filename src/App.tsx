@@ -100,6 +100,31 @@ const taskStatusLabel: Record<AgentTask['status'], string> = {
   approval: '승인 대기',
 };
 
+type SpeechBubbleLayout = {
+  dx: number;
+  dy: number;
+  anchor: 'above' | 'below';
+};
+
+const speechBubbleLayouts: Partial<Record<AgentId, SpeechBubbleLayout>> = {
+  youtube: { dx: -12, dy: 44, anchor: 'below' },
+  instagram: { dx: 4, dy: 46, anchor: 'below' },
+  designer: { dx: -6, dy: 46, anchor: 'below' },
+  developer: { dx: 12, dy: 44, anchor: 'below' },
+  business: { dx: 0, dy: -132, anchor: 'above' },
+  secretary: { dx: -10, dy: -132, anchor: 'above' },
+  editor: { dx: 0, dy: -138, anchor: 'above' },
+  writer: { dx: 10, dy: -132, anchor: 'above' },
+  researcher: { dx: 0, dy: -132, anchor: 'above' },
+};
+
+function taskSpeechLine(task: AgentTask) {
+  if (task.status === 'running') return `${task.skills[0]}로 처리 중 · ${task.progress}%`;
+  if (task.status === 'approval') return `보고서 준비 완료 · 승인 대기 ${task.progress}%`;
+  if (task.status === 'done') return `결과 정리 완료 · ${task.progress}%`;
+  return `자리에서 대기 · 시작 준비 ${task.progress}%`;
+}
+
 const approvalChoices: { label: ApprovalStatus; short: string }[] = [
   { label: '1회 승인됨', short: '1회 승인' },
   { label: '이번 세션 승인', short: '세션 승인' },
@@ -305,23 +330,30 @@ function Office({
         <div className="desk desk-e">TXT</div>
         {plan.tasks.map((task) => {
           const agent = AGENTS[task.agent];
+          const bubbleLayout = speechBubbleLayouts[task.agent] || { dx: 0, dy: -128, anchor: 'above' };
+          const isEngineAgent = task.agent === engine.agent;
           return (
             <button
               type="button"
               key={`terminal-${task.id}`}
-              className={`desk-terminal ${task.status}`}
+              className={`desk-terminal ${task.status} ${bubbleLayout.anchor} ${isEngineAgent ? 'is-speaking' : ''}`}
               style={{
-                left: `${agent.desk.x}%`,
+                left: `calc(${agent.desk.x}% + ${bubbleLayout.dx}px)`,
                 top: `${agent.desk.y}%`,
                 ['--agent-color' as string]: agent.color,
+                ['--terminal-y' as string]: `${bubbleLayout.dy}px`,
               }}
               onClick={() => selectAgent(task.agent)}
+              aria-label={`${agent.name} 업무 말풍선: ${task.title} ${taskSpeechLine(task)} ${task.output}`}
             >
               <span className="desk-terminal-head">
                 {agent.profileImage ? <img src={agent.profileImage} alt="" /> : <em>{agent.emoji}</em>}
                 <b>{agent.name}</b>
+                <small>{taskStatusLabel[task.status]} · {modelLabel(task.model)}</small>
               </span>
-              <span>{taskStatusLabel[task.status]} · {task.progress}%</span>
+              <strong className="desk-terminal-task">{task.title}</strong>
+              <span className="desk-terminal-says"><MessageSquareText size={12} /> {taskSpeechLine(task)}</span>
+              <span className="desk-terminal-output">{task.output}</span>
               <i style={{ width: `${task.progress}%` }} />
             </button>
           );

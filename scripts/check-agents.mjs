@@ -30,9 +30,11 @@ assert(appTsx.includes('TelegramIdentity') && appTsx.includes('telegram-status.l
 assert(appTsx.includes('https://github.com/lsi9923/connect-ai'), 'lsi9923/connect-ai 원본 참고 링크가 필요합니다.');
 assert(appTsx.includes('workbench-grid') && appTsx.includes('agent-inspector'), '메인 무대 아래 작업/로그/참고 정렬과 오른쪽 에이전트 편집 전용 레이아웃이 필요합니다.');
 assert(!appTsx.includes('title={`${agent.name}'), '브라우저 기본 title 툴팁 팝업은 제거되어야 합니다.');
+assert(appTsx.includes('speechBubbleLayouts') && appTsx.includes('taskSpeechLine') && appTsx.includes('desk-terminal-output'), '각 직원별 업무 말풍선에는 업무명, 현재 상태, 보고 문장이 보여야 합니다.');
 assert(appTsx.includes('OfficeStage3D'), 'Three.js 3D 사무실 무대가 앱에 연결되어야 합니다.');
 assert(officeStageTsx.includes("from 'three'") && officeStageTsx.includes('render_game_to_text') && officeStageTsx.includes('advanceTime'), '3D 게임 무대는 Three.js와 테스트 훅을 제공해야 합니다.');
 assert(officeStageTsx.includes('makeSystemTower') && officeStageTsx.includes('hermesSystems'), '3D 무대에는 Hermes memory/skill/gateway/scheduler 시스템 오브젝트가 필요합니다.');
 assert(officeStageTsx.includes('yawToward') && officeStageTsx.includes('facingYaw') && !officeStageTsx.includes('current.group.lookAt'), '이동 중 에이전트는 lookAt 대신 yaw 기반 방향 계산을 써야 합니다.');
 assert(officeStageTsx.includes('opsSettingsRef') && officeStageTsx.includes('autoCycle') && officeStageTsx.includes('sourceRepos') && officeStageTsx.includes('connectAiLab.autoCycleEnabled'), '3D stage payload에 사용자가 조정한 운영 상태와 원본 저장소 정보가 필요합니다.');
-console.log('OK: Connect AI 10 agents + P-Reinforce + user-controlled ops + Telegram identity + 3D yaw movement verified.');
+assert(officeStageTsx.includes('makeSpeechBubbleTexture') && officeStageTsx.includes('speechBubbles'), '3D 캐릭터 머리 위에도 업무 말풍선 텍스처와 테스트 payload가 필요합니다.');
+console.log('OK: Connect AI 10 agents + P-Reinforce + user-controlled ops + Telegram identity + agent speech bubbles + 3D yaw movement verified.');

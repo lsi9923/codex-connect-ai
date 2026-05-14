@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { AGENTS, AgentId, SPECIALIST_IDS } from './agents';
-import { OfficePlan } from './simulator';
+import type { AgentTask, OfficePlan } from './simulator';
 
 type AgentSceneItem = {
   id: AgentId;
@@ -11,6 +11,10 @@ type AgentSceneItem = {
   statusLight: THREE.Mesh;
   feet: THREE.Mesh[];
   facingYaw: number;
+  speechBubble: THREE.Sprite;
+  speechMaterial: THREE.SpriteMaterial;
+  speechTexture: THREE.Texture;
+  speechKey: string;
 };
 
 type OfficeStageOpsSettings = {
@@ -48,6 +52,119 @@ function material(color: string, roughness = 0.64) {
     roughness,
     metalness: 0.08,
   });
+}
+
+const speechStatusLabel: Record<AgentTask['status'], string> = {
+  queued: '대기',
+  running: '작업 중',
+  done: '완료',
+  approval: '승인 대기',
+};
+
+function drawRoundRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + width - radius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+  ctx.lineTo(x + width, y + height - radius);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  ctx.lineTo(x + radius, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+}
+
+function trimText(text: string, limit: number) {
+  return text.length > limit ? `${text.slice(0, limit - 1)}…` : text;
+}
+
+function drawWrappedText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number, maxLines: number) {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let current = '';
+
+  words.forEach((word) => {
+    const next = current ? `${current} ${word}` : word;
+    if (ctx.measureText(next).width <= maxWidth) {
+      current = next;
+      return;
+    }
+    if (current) lines.push(current);
+    current = word;
+  });
+  if (current) lines.push(current);
+
+  const visible = lines.slice(0, maxLines);
+  if (lines.length > maxLines && visible.length) {
+    visible[visible.length - 1] = trimText(visible[visible.length - 1], Math.max(8, visible[visible.length - 1].length - 2));
+  }
+  visible.forEach((line, index) => ctx.fillText(line, x, y + index * lineHeight));
+}
+
+function makeSpeechBubbleTexture(agentId: AgentId, task: AgentTask | undefined, motionLabel: string, isActive: boolean) {
+  const agent = AGENTS[agentId];
+  const color = agent.color === '#F8FAFC' ? '#7dd3fc' : agent.color;
+  const canvas = document.createElement('canvas');
+  canvas.width = 640;
+  canvas.height = 292;
+  const ctx = canvas.getContext('2d')!;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+  gradient.addColorStop(0, isActive ? 'rgba(8,47,73,.96)' : 'rgba(2,6,23,.94)');
+  gradient.addColorStop(0.68, 'rgba(15,23,42,.9)');
+  gradient.addColorStop(1, isActive ? 'rgba(20,83,45,.88)' : 'rgba(30,41,59,.82)');
+  drawRoundRect(ctx, 18, 18, 604, 226, 26);
+  ctx.fillStyle = gradient;
+  ctx.fill();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = isActive ? 10 : 7;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(286, 244);
+  ctx.lineTo(326, 284);
+  ctx.lineTo(366, 244);
+  ctx.closePath();
+  ctx.fillStyle = isActive ? 'rgba(8,47,73,.96)' : 'rgba(2,6,23,.94)';
+  ctx.fill();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 6;
+  ctx.stroke();
+
+  ctx.fillStyle = color;
+  ctx.globalAlpha = 0.16;
+  ctx.fillRect(38, 42, 564, 42);
+  ctx.globalAlpha = 1;
+
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#f8fafc';
+  ctx.font = '900 34px Segoe UI Emoji, Segoe UI, sans-serif';
+  ctx.fillText(`${agent.emoji} ${agent.name}`, 42, 70);
+
+  const status = task ? speechStatusLabel[task.status] : '준비';
+  ctx.fillStyle = isActive ? '#bbf7d0' : '#bae6fd';
+  ctx.font = '900 22px Segoe UI, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText(`${status} · ${task?.progress ?? 0}%`, 596, 70);
+
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#67e8f9';
+  ctx.font = '900 25px Segoe UI, sans-serif';
+  ctx.fillText(motionLabel, 42, 118);
+
+  ctx.fillStyle = '#e5eefc';
+  ctx.font = '900 26px Segoe UI, sans-serif';
+  drawWrappedText(ctx, task ? `지금: ${task.title}` : '지금: 다음 업무 준비', 42, 155, 548, 31, 2);
+
+  ctx.fillStyle = '#cbd5e1';
+  ctx.font = '700 21px Segoe UI, sans-serif';
+  drawWrappedText(ctx, task ? `보고: ${task.output}` : '보고: CEO 지시를 기다리는 중', 42, 221, 548, 26, 1);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
 }
 
 function makeBlockAgent(agentId: AgentId) {
@@ -386,7 +503,31 @@ export function OfficeStage3D({
       label.position.set(0, 2.15, 0);
       group.add(label);
 
-      agents.set(id, { id, group, home: group.position.clone(), desk: deskMesh, statusLight: badge, feet, facingYaw });
+      const speechTexture = makeSpeechBubbleTexture(id, undefined, '자리 업무 준비', false);
+      const speechMaterial = new THREE.SpriteMaterial({
+        map: speechTexture,
+        transparent: true,
+        opacity: 0.96,
+        toneMapped: false,
+      });
+      const speechBubble = new THREE.Sprite(speechMaterial);
+      speechBubble.scale.set(2.15, 0.98, 1);
+      speechBubble.position.set(0, 2.85, 0);
+      group.add(speechBubble);
+
+      agents.set(id, {
+        id,
+        group,
+        home: group.position.clone(),
+        desk: deskMesh,
+        statusLight: badge,
+        feet,
+        facingYaw,
+        speechBubble,
+        speechMaterial,
+        speechTexture,
+        speechKey: 'init',
+      });
     });
 
     const ceoAgent = makeBlockAgent('ceo');
@@ -415,6 +556,11 @@ export function OfficeStage3D({
       const { agentId, phaseTime } = computeRoute(time);
       const current = agents.get(agentId);
       const ceoPoint = new THREE.Vector3(0, 0, 1.15);
+      const activeMotionLabel = phaseTime < 0.38
+        ? 'CEO 방으로 이동하며 보고 준비'
+        : phaseTime <= 0.68
+          ? 'CEO에게 현재 업무 보고'
+          : '보고 후 자리로 복귀';
 
       ceoHalo.rotation.z = time * 0.9;
       learningRing.rotation.z = -time * 0.36;
@@ -431,6 +577,8 @@ export function OfficeStage3D({
 
       agents.forEach((item, id) => {
         const task = planRef.current.tasks.find((candidate) => candidate.agent === id);
+        const isRouteAgent = id === agentId;
+        const motionLabel = isRouteAgent ? activeMotionLabel : '자리에서 맡은 업무 실행';
         const home = item.home;
         const idleBob = Math.sin(time * 2.2 + home.x) * 0.045;
         item.group.position.set(home.x, idleBob, home.z);
@@ -439,6 +587,26 @@ export function OfficeStage3D({
         item.statusLight.scale.setScalar(task?.status === 'approval' ? 1.55 : task?.status === 'running' ? 1.25 : 1);
         const lampMaterial = item.statusLight.material as THREE.MeshStandardMaterial;
         lampMaterial.color.set(task?.status === 'approval' ? '#f59e0b' : task?.status === 'done' ? '#86efac' : '#22c55e');
+        const speechKey = [
+          id,
+          task?.status,
+          task?.progress,
+          task?.title,
+          task?.output,
+          motionLabel,
+          isRouteAgent ? 'active-route' : 'desk-route',
+        ].join('|');
+        if (item.speechKey !== speechKey) {
+          const nextTexture = makeSpeechBubbleTexture(id, task, motionLabel, isRouteAgent);
+          item.speechTexture.dispose();
+          item.speechMaterial.map = nextTexture;
+          item.speechMaterial.opacity = isRouteAgent ? 1 : 0.9;
+          item.speechMaterial.needsUpdate = true;
+          item.speechTexture = nextTexture;
+          item.speechKey = speechKey;
+        }
+        item.speechBubble.position.y = isRouteAgent ? 3.03 : 2.82;
+        item.speechBubble.scale.set(isRouteAgent ? 2.36 : 2.08, isRouteAgent ? 1.07 : 0.94, 1);
         item.feet.forEach((foot, idx) => {
           foot.rotation.x = Math.sin(time * 5 + idx * Math.PI) * 0.18;
         });
@@ -499,6 +667,17 @@ export function OfficeStage3D({
           z: Number(item.group.position.z.toFixed(2)),
           facingYaw: Number(item.facingYaw.toFixed(3)),
         })),
+        speechBubbles: Array.from(agents.values()).map((item) => {
+          const task = planRef.current.tasks.find((candidate) => candidate.agent === item.id);
+          return {
+            id: item.id,
+            visible: true,
+            task: task?.title || '다음 업무 준비',
+            status: task?.status || 'queued',
+            output: task?.output || 'CEO 지시 대기',
+            textureKey: item.speechKey,
+          };
+        }),
         runId: planRef.current.runId,
         taskCount: planRef.current.tasks.length,
         autoCycle: {
@@ -566,6 +745,10 @@ export function OfficeStage3D({
       renderer.domElement.removeEventListener('pointerdown', onPointerDown);
       if (window.render_game_to_text === renderGameToText) delete window.render_game_to_text;
       delete window.advanceTime;
+      agents.forEach((item) => {
+        item.speechTexture.dispose();
+        item.speechMaterial.dispose();
+      });
       renderer.dispose();
       container.replaceChildren();
     };
