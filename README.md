@@ -10,7 +10,7 @@ React + Vite 기반의 Connect AI 운영 화면입니다. CEO가 목표를 내�
 - 직원별 작업 카드와 실시간 보고 로그
 - 직원별 모델 선택과 스킬 직접 편집
 - 직원 프로필 이름/사진 URL 편집, 작업 카드와 시뮬레이션 이름표 동기화
-- `pixel-agent-office-simulator` 로컬 스킬 연동
+- `pixel-agent-office-simulator` 로컬 스킬 연동 및 `skills/pixel-agent-office-simulator.skill` 패키지 포함
 - 24시간 자율 사이클은 사용자가 켜야 시작되는 운영 제어 UI
 - 데일리 브리핑 시간, 비서 브릿지 모드, Auto-Git Sync 승인 큐, Dynamic Model Detection 표시
 - Telegram 연결 대상 표시와 승인 대기 UI
