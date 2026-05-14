@@ -49,6 +49,10 @@
     "status": "passed",
     "evidence": "Installed C:\\Users\\imda0\\Downloads\\pixel-agent-office-simulator.skill into C:\\Users\\imda0\\.codex\\skills\\pixel-agent-office-simulator. Compared against latest lsi9923/sang-ai-office-simulator origin/main b373d3114990f0c969f81445730c5bd492342a1f and lsi9923/connect-ai HEAD b99f4771988fe1118e1fe64b72007e8067ea32c3. App now exposes pixel-agent-office-simulator in local skill recommendations and default CEO/Developer/Designer/Secretary skill sets, applies 1.4 sprite scale, 14/7 idle/walk speeds, skill z-index ordering, and click-through agent detail modal. npm test, npm run build, and Playwright browser checks passed with no console errors. Screenshots saved to D:\\connect-ai-office-upgrade-work\\connect-ai-pixel-skill-integration.png and D:\\connect-ai-office-upgrade-work\\connect-ai-pixel-skill-modal.png."
   },
+  "sangSimulatorAgentCountFix": {
+    "status": "passed",
+    "evidence": "SangOfficeSimulator had kept the upstream 7-agent sample roster. Added editor, writer, and researcher to the simulator-only roster so the visible office floor follows the main Connect AI employee/task roster instead of the upstream sample count. npm test and npm run build passed. Chrome DevTools verified stageAgents=10, statusCards=10, bubbles=10, payloadAgents=10, ACTIVE 2/10, and no console error/warn/issue at http://127.0.0.1:5199/?v=full-agent-roster."
+  },
   "ultragoalCheckpoint": {
     "status": "not_checkpointed",
     "evidence": "omx ultragoal checkpoint requires a fresh Codex get_goal snapshot, but this desktop thread exposes no get_goal/update_goal tools. No synthetic Codex goal snapshot was created."

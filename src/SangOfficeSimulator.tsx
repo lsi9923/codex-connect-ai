@@ -212,6 +212,42 @@ const SIM_AGENTS: SimAgentDef[] = [
     sprite: `${SPRITE_BASE}/secretary.png`,
     idleDir: 'left',
   },
+  {
+    id: 'editor',
+    name: '루나',
+    role: 'Sound Director',
+    badge: 'SND',
+    emoji: '🎵',
+    color: '#f472b6',
+    specialty: '영상 BGM 자동 생성, 사운드 디자인, 자막·타이틀 리듬',
+    tagline: '영상에 어울리는 BGM과 사운드 방향을 잡습니다',
+    sprite: `${SPRITE_BASE}/editor.png`,
+    idleDir: 'up',
+  },
+  {
+    id: 'writer',
+    name: 'Writer',
+    role: 'Copywriter',
+    badge: 'TXT',
+    emoji: '✍️',
+    color: '#fbbf24',
+    specialty: '카피라이팅, 영상 스크립트 초안, 후크 작성',
+    tagline: '카피·스크립트·후크를 글로 풀어냅니다',
+    sprite: `${SPRITE_BASE}/writer.png`,
+    idleDir: 'left',
+  },
+  {
+    id: 'researcher',
+    name: 'Researcher',
+    role: 'Trend & Data Researcher',
+    badge: 'RND',
+    emoji: '🔍',
+    color: '#60a5fa',
+    specialty: '트렌드 리서치, 경쟁사 분석, 데이터 수집·요약',
+    tagline: '트렌드와 데이터를 모아 사실 확인까지 끝냅니다',
+    sprite: `${SPRITE_BASE}/researcher.png`,
+    idleDir: 'left',
+  },
 ];
 
 const DESK_POSITIONS: Partial<Record<AgentId, { x: number; y: number }>> = {
@@ -221,18 +257,24 @@ const DESK_POSITIONS: Partial<Record<AgentId, { x: number; y: number }>> = {
   business: { x: 68, y: 32 },
   developer: { x: 26, y: 56 },
   secretary: { x: 68, y: 56 },
+  editor: { x: 38, y: 66 },
+  writer: { x: 56, y: 66 },
+  researcher: { x: 82, y: 46 },
   ceo: { x: 47, y: 78 },
 };
 
 const CEO_POS = { x: 47, y: 78 };
 
 const CEO_OFFSETS: Partial<Record<AgentId, { dx: number; dy: number }>> = {
-  youtube: { dx: -14, dy: -7 },
-  instagram: { dx: -7, dy: -10 },
-  designer: { dx: 0, dy: -12 },
-  business: { dx: 7, dy: -10 },
-  developer: { dx: 14, dy: -7 },
-  secretary: { dx: 0, dy: 5 },
+  youtube: { dx: -18, dy: -10 },
+  instagram: { dx: -11, dy: -13 },
+  designer: { dx: -4, dy: -15 },
+  business: { dx: 4, dy: -15 },
+  developer: { dx: 11, dy: -13 },
+  secretary: { dx: 18, dy: -10 },
+  editor: { dx: -10, dy: 5 },
+  writer: { dx: 0, dy: 8 },
+  researcher: { dx: 10, dy: 5 },
 };
 
 const AGENT_THOUGHTS: Record<string, string[]> = {
@@ -243,6 +285,9 @@ const AGENT_THOUGHTS: Record<string, string[]> = {
   developer: ['이거 캐시해야', '버그 어디서 났지', '리팩터 해야 하는데', '...아 그게 그구나', '테스트 돌려야지'],
   business: ['ROI 계산 다시', '단가 협상해야', '월 마감 보자', '현금흐름은 OK', '채널별 수익 분리'],
   secretary: ['일정 정리하자', '메일 답장 보내야', 'CEO 미팅 30분 후', '텔레그램 승인 대기', '회의록 다시 보자'],
+  editor: ['BGM 톤 맞춰야지', '인트로 사운드가 핵심', '자막 리듬 다시 보자', '전환음이 필요해', '오디오 레벨 체크'],
+  writer: ['첫 문장이 약한데', '후크를 더 짧게', 'CTA 문구 다시', '스크립트 흐름 점검', '제목 후보 정리'],
+  researcher: ['출처 다시 확인', '경쟁사 자료 모으자', '트렌드 신호 체크', '데이터 표본 더 필요', '근거 링크 정리'],
 };
 
 const ROLE_WORK_MESSAGES: Record<string, string[]> = {
@@ -253,6 +298,9 @@ const ROLE_WORK_MESSAGES: Record<string, string[]> = {
   developer: ['코드 작성 중...', '버그 수정 중...', 'API 연동 중...', '테스트 실행 중...', '리팩터링 중...'],
   business: ['수익 분석 중...', '경쟁사 조사 중...', 'KPI 설계 중...', '가격 전략 수립 중...'],
   secretary: ['일정 정리 중...', '보고서 요약 중...', '텔레그램 발송 준비 중...', '회의록 작성 중...'],
+  editor: ['BGM 방향 설계 중...', '사운드 큐 정리 중...', '자막 리듬 체크 중...', '오디오 후처리 중...'],
+  writer: ['카피 초안 작성 중...', '스크립트 후크 작성 중...', '랜딩 문구 정리 중...', '문장 톤 다듬는 중...'],
+  researcher: ['시장 자료 조사 중...', '경쟁사 근거 수집 중...', '출처 검증 중...', '트렌드 요약 중...'],
 };
 
 const IDLE_DIR_CYCLE: Record<string, SimDirection[]> = {
@@ -263,6 +311,9 @@ const IDLE_DIR_CYCLE: Record<string, SimDirection[]> = {
   developer: ['right', 'down', 'right', 'down', 'right'],
   business: ['down', 'right', 'down', 'left', 'down'],
   secretary: ['left', 'down', 'right', 'down', 'left'],
+  editor: ['up', 'left', 'up', 'right', 'up'],
+  writer: ['left', 'down', 'left', 'up', 'left'],
+  researcher: ['left', 'down', 'left', 'right', 'left'],
 };
 
 const QUICK_CMDS = [
@@ -613,7 +664,7 @@ function useSangSimulation(plan: OfficePlan) {
       manusProject: MANUS_PROJECT_ID,
       sourceAssets: {
         map: OFFICE_MAP,
-        sprites: `${SPRITE_BASE}/{ceo,youtube,instagram,designer,developer,business,secretary}.png`,
+        sprites: `${SPRITE_BASE}/{ceo,youtube,instagram,designer,developer,business,secretary,editor,writer,researcher}.png`,
       },
       reportMode: modeRef.current,
       activeAgent: activeRef.current,
