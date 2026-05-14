@@ -21,6 +21,14 @@ type OfficeStageOpsSettings = {
   dynamicModelDetection: boolean;
 };
 
+type MotionPhase = 'walkingToCeo' | 'reporting' | 'walkingBack' | 'idle';
+
+type MotionRouteState = {
+  agent: AgentId;
+  phase: MotionPhase;
+  progress: number;
+};
+
 declare global {
   interface Window {
     render_game_to_text?: () => string;
@@ -35,6 +43,18 @@ function worldFromDesk(id: AgentId) {
 
 function yawToward(from: THREE.Vector3, to: THREE.Vector3) {
   return Math.atan2(to.x - from.x, to.z - from.z);
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function smoothStep(value: number) {
+  return value * value * (3 - 2 * value);
+}
+
+function easeOutCubic(value: number) {
+  return 1 - Math.pow(1 - value, 3);
 }
 
 function setFacingYaw(item: AgentSceneItem, target: THREE.Vector3) {
@@ -332,24 +352,32 @@ export function OfficeStage3D({
   activeAgent,
   selectAgent,
   opsSettings,
+  motionAgent,
+  motionPhase,
+  motionProgress,
 }: {
   plan: OfficePlan;
   activeAgent: AgentId;
   selectAgent: (id: AgentId) => void;
   opsSettings: OfficeStageOpsSettings;
+  motionAgent: AgentId;
+  motionPhase: MotionPhase;
+  motionProgress: number;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const planRef = useRef(plan);
   const activeAgentRef = useRef(activeAgent);
   const selectAgentRef = useRef(selectAgent);
   const opsSettingsRef = useRef(opsSettings);
+  const motionRef = useRef<MotionRouteState>({ agent: motionAgent, phase: motionPhase, progress: motionProgress });
 
   useEffect(() => {
     planRef.current = plan;
     activeAgentRef.current = activeAgent;
     selectAgentRef.current = selectAgent;
     opsSettingsRef.current = opsSettings;
-  }, [activeAgent, opsSettings, plan, selectAgent]);
+    motionRef.current = { agent: motionAgent, phase: motionPhase, progress: motionProgress };
+  }, [activeAgent, motionAgent, motionPhase, motionProgress, opsSettings, plan, selectAgent]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -404,17 +432,16 @@ export function OfficeStage3D({
       renderer.setSize(width, height, false);
     };
 
-    const computeRoute = (time: number) => {
+    const computeRoute = () => {
       const roster = planRef.current.activeAgents.length ? planRef.current.activeAgents : SPECIALIST_IDS;
-      const cycle = 6.4;
-      const index = Math.floor(time / cycle) % roster.length;
-      const agentId = roster[index];
-      const phaseTime = (time % cycle) / cycle;
-      return { roster, agentId, phaseTime, index };
+      const currentMotion = motionRef.current;
+      const agentId = roster.includes(currentMotion.agent) ? currentMotion.agent : roster[0];
+      const index = Math.max(0, roster.indexOf(agentId));
+      return { roster, agentId, phase: currentMotion.phase, progress: clamp(currentMotion.progress, 0, 1), index };
     };
 
     const updateScene = (time: number) => {
-      const { agentId, phaseTime } = computeRoute(time);
+      const { agentId, phase, progress } = computeRoute();
       const current = agents.get(agentId);
       const ceoPoint = new THREE.Vector3(0, 0, 1.15);
 
@@ -448,27 +475,36 @@ export function OfficeStage3D({
 
       if (current) {
         const start = current.home.clone();
-        const go = Math.min(1, phaseTime / 0.38);
-        const back = phaseTime > 0.68 ? Math.min(1, (phaseTime - 0.68) / 0.32) : 0;
-        const hold = phaseTime >= 0.38 && phaseTime <= 0.68;
-        const easedGo = 1 - Math.pow(1 - go, 3);
-        const easedBack = back * back * (3 - 2 * back);
-        const routePoint = hold
-          ? ceoPoint
-          : phaseTime < 0.68
-            ? start.clone().lerp(ceoPoint, easedGo)
-            : ceoPoint.clone().lerp(start, easedBack);
-        routePoint.y = Math.sin(time * 11) * 0.05;
+        let routePoint = start.clone();
+        let routeTarget = ceoPoint;
+        let packetRatio = 0;
+
+        if (phase === 'walkingToCeo') {
+          const amount = easeOutCubic(progress);
+          routePoint = start.clone().lerp(ceoPoint, amount);
+          routeTarget = ceoPoint;
+          packetRatio = amount;
+        } else if (phase === 'reporting') {
+          routePoint = ceoPoint.clone();
+          routeTarget = ceoPoint.clone().add(new THREE.Vector3(0, 0, -1));
+          packetRatio = 1;
+        } else if (phase === 'walkingBack') {
+          const amount = smoothStep(progress);
+          routePoint = ceoPoint.clone().lerp(start, amount);
+          routeTarget = start;
+          packetRatio = 1 - amount;
+        }
+
+        routePoint.y = phase === 'idle' ? Math.sin(time * 2.2 + start.x) * 0.045 : Math.sin(time * 11) * 0.05;
         current.group.position.copy(routePoint);
-        current.group.scale.setScalar(1.22);
-        setFacingYaw(current, phaseTime < 0.68 ? ceoPoint : start);
+        current.group.scale.setScalar(phase === 'idle' ? 1.08 : 1.22);
+        setFacingYaw(current, routeTarget);
         current.feet.forEach((foot, idx) => {
-          foot.rotation.x = Math.sin(time * 14 + idx * Math.PI) * 0.5;
+          foot.rotation.x = phase === 'reporting' || phase === 'idle' ? Math.sin(time * 4 + idx * Math.PI) * 0.16 : Math.sin(time * 14 + idx * Math.PI) * 0.5;
         });
 
         const activeLine = [start.clone().setY(0.1), ceoPoint.clone().setY(0.1)];
         routeLine.geometry.setFromPoints(activeLine);
-        const packetRatio = phaseTime < 0.5 ? phaseTime * 2 : (1 - phaseTime) * 2;
         movingPacket.position.copy(start.clone().lerp(ceoPoint, Math.max(0, Math.min(1, packetRatio))));
         movingPacket.position.y = 0.45 + Math.sin(time * 8) * 0.08;
         movingPacket.rotation.set(time * 1.4, time * 2.2, time * 1.1);
@@ -480,7 +516,7 @@ export function OfficeStage3D({
     };
 
     const renderGameToText = () => {
-      const route = computeRoute(simTime);
+      const route = computeRoute();
       const activeItem = agents.get(route.agentId);
       const currentOps = opsSettingsRef.current;
       const payload = {
@@ -495,6 +531,8 @@ export function OfficeStage3D({
             }
           : null,
         facingYaw: activeItem ? Number(activeItem.facingYaw.toFixed(3)) : null,
+        motionPhase: route.phase,
+        motionProgress: Number(route.progress.toFixed(3)),
         movingAgents: Array.from(agents.values()).map((item) => ({
           id: item.id,
           x: Number(item.group.position.x.toFixed(2)),

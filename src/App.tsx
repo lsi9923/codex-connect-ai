@@ -105,6 +105,18 @@ type SpeechBubbleLayout = {
   anchor: 'above' | 'below';
 };
 
+type MotionEngineState = {
+  agent: AgentId;
+  phase: MotionPhase;
+  cycle: number;
+  phaseStartedAt: number;
+};
+
+type StagePoint = {
+  x: number;
+  y: number;
+};
+
 const speechBubbleLayouts: Partial<Record<AgentId, SpeechBubbleLayout>> = {
   youtube: { dx: -12, dy: 44, anchor: 'below' },
   instagram: { dx: 4, dy: 46, anchor: 'below' },
@@ -122,6 +134,54 @@ function taskSpeechLine(task: AgentTask) {
   if (task.status === 'approval') return `보고서 준비 완료 · 승인 대기 ${task.progress}%`;
   if (task.status === 'done') return `결과 정리 완료 · ${task.progress}%`;
   return `자리에서 대기 · 시작 준비 ${task.progress}%`;
+}
+
+function nowMs() {
+  return typeof performance === 'undefined' ? Date.now() : performance.now();
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function lerp(start: number, end: number, amount: number) {
+  return start + (end - start) * amount;
+}
+
+function smoothStep(value: number) {
+  return value * value * (3 - 2 * value);
+}
+
+function easeOutCubic(value: number) {
+  return 1 - Math.pow(1 - value, 3);
+}
+
+function motionPhaseProgress(phase: MotionPhase, phaseStartedAt: number, motionNow: number) {
+  return clamp((motionNow - phaseStartedAt) / phaseDurations[phase], 0, 1);
+}
+
+function movingSpeechBubblePosition(agent: AgentDef, isMovingAgent: boolean, phase: MotionPhase, progress: number): StagePoint {
+  if (!isMovingAgent) return { x: agent.desk.x, y: agent.desk.y };
+
+  const home = agent.desk;
+  const ceoPoint = { x: 50, y: 52 };
+  const safeProgress = clamp(progress, 0, 1);
+  let point: StagePoint = home;
+
+  if (phase === 'walkingToCeo') {
+    const amount = easeOutCubic(safeProgress);
+    point = { x: lerp(home.x, ceoPoint.x, amount), y: lerp(home.y, ceoPoint.y, amount) };
+  } else if (phase === 'reporting') {
+    point = { x: ceoPoint.x, y: ceoPoint.y + Math.sin(safeProgress * Math.PI * 2) * 0.65 };
+  } else if (phase === 'walkingBack') {
+    const amount = smoothStep(safeProgress);
+    point = { x: lerp(ceoPoint.x, home.x, amount), y: lerp(ceoPoint.y, home.y, amount) };
+  }
+
+  return {
+    x: clamp(point.x, 13, 87),
+    y: clamp(point.y, 31, 86),
+  };
 }
 
 const approvalChoices: { label: ApprovalStatus; short: string }[] = [
@@ -234,18 +294,37 @@ function Office({
 }) {
   const activeRoster = plan.activeAgents.length ? plan.activeAgents : SPECIALIST_IDS;
   const tasksByAgent = useMemo(() => new Map(plan.tasks.map((task) => [task.agent, task])), [plan.tasks]);
-  const [engine, setEngine] = useState<{ agent: AgentId; phase: MotionPhase; cycle: number }>({
+  const [engine, setEngine] = useState<MotionEngineState>({
     agent: activeRoster[0],
     phase: 'walkingToCeo',
     cycle: 0,
+    phaseStartedAt: nowMs(),
   });
+  const [motionNow, setMotionNow] = useState(() => nowMs());
   const phaseIndex = phaseOrder.indexOf(engine.phase);
+  const phaseProgress = motionPhaseProgress(engine.phase, engine.phaseStartedAt, motionNow);
   const currentAgent = AGENTS[engine.agent];
   const currentTask = tasksByAgent.get(engine.agent);
 
   useEffect(() => {
-    setEngine({ agent: activeRoster[0], phase: 'walkingToCeo', cycle: plan.runId });
+    setEngine({ agent: activeRoster[0], phase: 'walkingToCeo', cycle: plan.runId, phaseStartedAt: nowMs() });
   }, [activeRoster, plan.runId]);
+
+  useEffect(() => {
+    let frameId = 0;
+    let lastPaint = 0;
+
+    const tick = (timestamp: number) => {
+      if (timestamp - lastPaint > 33) {
+        setMotionNow(timestamp);
+        lastPaint = timestamp;
+      }
+      frameId = window.requestAnimationFrame(tick);
+    };
+
+    frameId = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(frameId);
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -255,9 +334,9 @@ function Office({
         if (prev.phase === 'idle') {
           const currentAgentIndex = Math.max(0, activeRoster.indexOf(prev.agent));
           const nextAgentIndex = (currentAgentIndex + 1) % activeRoster.length;
-          return { agent: activeRoster[nextAgentIndex], phase: 'walkingToCeo', cycle: prev.cycle + 1 };
+          return { agent: activeRoster[nextAgentIndex], phase: 'walkingToCeo', cycle: prev.cycle + 1, phaseStartedAt: nowMs() };
         }
-        return { ...prev, phase: nextPhase };
+        return { ...prev, phase: nextPhase, phaseStartedAt: nowMs() };
       });
     }, phaseDurations[engine.phase]);
     return () => window.clearTimeout(timer);
@@ -280,7 +359,15 @@ function Office({
       </div>
 
       <div className="office-floor">
-        <OfficeStage3D plan={plan} activeAgent={activeAgent} selectAgent={selectAgent} opsSettings={opsSettings} />
+        <OfficeStage3D
+          plan={plan}
+          activeAgent={activeAgent}
+          selectAgent={selectAgent}
+          opsSettings={opsSettings}
+          motionAgent={engine.agent}
+          motionPhase={engine.phase}
+          motionProgress={phaseProgress}
+        />
         <div className="office-room-shell">
           <div className="back-wall">
             <div className="window window-a"><span /></div>
@@ -331,17 +418,21 @@ function Office({
           const agent = AGENTS[task.agent];
           const bubbleLayout = speechBubbleLayouts[task.agent] || { dx: 0, dy: -128, anchor: 'above' };
           const isEngineAgent = task.agent === engine.agent;
+          const speechPoint = movingSpeechBubblePosition(agent, isEngineAgent, engine.phase, phaseProgress);
+          const speechAnchor = isEngineAgent ? 'above' : bubbleLayout.anchor;
+          const speechOffsetY = isEngineAgent ? -156 : bubbleLayout.dy;
+          const speechOffsetX = isEngineAgent ? 0 : bubbleLayout.dx;
           const speechLine = isEngineAgent ? `${phaseLabels[engine.phase]} · ${taskSpeechLine(task)}` : taskSpeechLine(task);
           return (
             <button
               type="button"
               key={`terminal-${task.id}`}
-              className={`desk-terminal ${task.status} ${bubbleLayout.anchor} ${isEngineAgent ? 'is-speaking' : ''}`}
+              className={`desk-terminal ${task.status} ${speechAnchor} ${isEngineAgent ? 'is-speaking moving-speech-bubble' : ''}`}
               style={{
-                left: `calc(${agent.desk.x}% + ${bubbleLayout.dx}px)`,
-                top: `${agent.desk.y}%`,
+                left: `calc(${speechPoint.x}% + ${speechOffsetX}px)`,
+                top: `${speechPoint.y}%`,
                 ['--agent-color' as string]: agent.color,
-                ['--terminal-y' as string]: `${bubbleLayout.dy}px`,
+                ['--terminal-y' as string]: `${speechOffsetY}px`,
               }}
               onClick={() => selectAgent(task.agent)}
               aria-label={`${agent.name} 통합 업무 말풍선: ${task.title} ${speechLine} ${task.output}`}

@@ -111,12 +111,15 @@ button { color: inherit; }
 .beam-3 { stroke: rgba(132, 204, 22, .4); animation-duration: 5.8s; }
 .beam-4 { stroke: rgba(167, 139, 250, .4); animation-duration: 3.9s; }
 @keyframes beamMove { to { stroke-dashoffset: -40; } }
-.desk-terminal { position: absolute; z-index: 13; width: 218px; min-height: 118px; transform: translate(-50%, var(--terminal-y, -128px)); display: grid; gap: 6px; text-align: left; border: 1px solid color-mix(in srgb, var(--agent-color), transparent 42%); border-radius: 8px; padding: 10px 11px 11px; color: #e0f2fe; background: linear-gradient(180deg, rgba(2,6,23,.9), rgba(15,23,42,.76)); box-shadow: 0 18px 36px rgba(0,0,0,.34), 0 0 26px color-mix(in srgb, var(--agent-color), transparent 76%); backdrop-filter: blur(10px); cursor: pointer; transition: transform .22s ease, border-color .22s ease, opacity .22s ease; }
+.desk-terminal { position: absolute; z-index: 13; width: 218px; min-height: 118px; transform: translate(-50%, var(--terminal-y, -128px)); display: grid; gap: 6px; text-align: left; border: 1px solid color-mix(in srgb, var(--agent-color), transparent 42%); border-radius: 8px; padding: 10px 11px 11px; color: #e0f2fe; background: linear-gradient(180deg, rgba(2,6,23,.9), rgba(15,23,42,.76)); box-shadow: 0 18px 36px rgba(0,0,0,.34), 0 0 26px color-mix(in srgb, var(--agent-color), transparent 76%); backdrop-filter: blur(10px); cursor: pointer; transition: left .08s linear, top .08s linear, transform .22s ease, border-color .22s ease, opacity .22s ease; will-change: left, top, transform; }
 .desk-terminal::after { content: ''; position: absolute; left: 50%; width: 14px; height: 14px; background: rgba(2,6,23,.9); border: solid color-mix(in srgb, var(--agent-color), transparent 42%); transform: translateX(-50%) rotate(45deg); }
 .desk-terminal.above::after { bottom: -8px; border-width: 0 1px 1px 0; }
 .desk-terminal.below::after { top: -8px; border-width: 1px 0 0 1px; }
 .desk-terminal:hover, .desk-terminal.is-speaking { border-color: color-mix(in srgb, var(--agent-color), #e0f2fe 24%); box-shadow: 0 22px 42px rgba(0,0,0,.38), 0 0 34px color-mix(in srgb, var(--agent-color), transparent 58%); }
 .desk-terminal.is-speaking { transform: translate(-50%, var(--terminal-y, -128px)) scale(1.04); }
+.desk-terminal.moving-speech-bubble { z-index: 17; background: linear-gradient(180deg, color-mix(in srgb, var(--agent-color), rgba(2,6,23,.92) 18%), rgba(15,23,42,.84)); }
+.desk-terminal.moving-speech-bubble::before { content: ''; position: absolute; inset: -7px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--agent-color), transparent 42%); opacity: .42; pointer-events: none; animation: speakingBubblePulse 1.3s ease-in-out infinite; }
+@keyframes speakingBubblePulse { 50% { opacity: .78; transform: scale(1.025); } }
 .desk-terminal-head { display: grid; grid-template-columns: 26px minmax(0,1fr) auto; gap: 4px 8px; align-items: center; min-width: 0; }
 .desk-terminal-head img, .desk-terminal-head em { width: 26px; height: 26px; display: grid; place-items: center; grid-row: span 2; border-radius: 6px; border: 1px solid color-mix(in srgb, var(--agent-color), transparent 35%); background: rgba(255,255,255,.08); object-fit: cover; font-style: normal; }
 .desk-terminal-head b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }

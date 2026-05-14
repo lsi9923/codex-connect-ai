@@ -31,6 +31,8 @@ assert(appTsx.includes('https://github.com/lsi9923/connect-ai'), 'lsi9923/connec
 assert(appTsx.includes('workbench-grid') && appTsx.includes('agent-inspector'), '메인 무대 아래 작업/로그/참고 정렬과 오른쪽 에이전트 편집 전용 레이아웃이 필요합니다.');
 assert(!appTsx.includes('title={`${agent.name}'), '브라우저 기본 title 툴팁 팝업은 제거되어야 합니다.');
 assert(appTsx.includes('speechBubbleLayouts') && appTsx.includes('taskSpeechLine') && appTsx.includes('desk-terminal-output'), '각 직원별 업무 말풍선에는 업무명, 현재 상태, 보고 문장이 보여야 합니다.');
+assert(appTsx.includes('movingSpeechBubblePosition') && appTsx.includes('motionPhaseProgress') && appTsx.includes('requestAnimationFrame') && appTsx.includes('moving-speech-bubble'), '활성 직원 말풍선은 애니메이션 좌표를 따라 위쪽에서 같이 움직여야 합니다.');
+assert(appTsx.includes('motionAgent={engine.agent}') && officeStageTsx.includes('motionRef') && officeStageTsx.includes('motionPhase') && officeStageTsx.includes('motionProgress'), '3D 캐릭터와 HTML 말풍선은 같은 직원/단계/진행률 상태를 공유해야 합니다.');
 assert(appTsx.includes('통합 업무 말풍선') && !appTsx.includes('className="route-director"'), '직원 이동 상태와 업무 상태는 별도 중앙 말풍선이 아니라 직원별 통합 말풍선 하나로 보여야 합니다.');
 assert(!appTsx.includes('work-packet') && !appTsx.includes('packet-a'), '전략/분석/보고 같은 떠다니는 보조 라벨은 직원 통합 말풍선과 중복되므로 없어야 합니다.');
 assert(appTsx.includes('OfficeStage3D'), 'Three.js 3D 사무실 무대가 앱에 연결되어야 합니다.');

@@ -33,6 +33,10 @@
     "status": "passed",
     "evidence": "Replaced fixed 24시간 업무 ON display with a control console. Browser smoke confirmed beforePayloadEnabled=false, clicking 24시간 시작 changes UI to 실행 중 and payload enabled=true, and subsequent setting changes appear in render_game_to_text autoCycle payload. Screenshot saved to D:\\connect-ai-office-upgrade-work\\connect-ai-ops-control-running.png."
   },
+  "movingSpeechBubbleFollow": {
+    "status": "passed",
+    "evidence": "Active employee speech bubbles now use the same office state-machine route as the moving 3D agent: desk to CEO table to desk, with the active bubble forced above the character. OfficeStage3D receives motionAgent/motionPhase/motionProgress from React so the 3D agent and HTML bubble stay synchronized. npm test and npm run build passed. Chrome DevTools verified .desk-terminal.moving-speech-bubble moved 312px across 12 samples, payload activeAgent=youtube matched the moving Leo bubble, motionPhase advanced walkingToCeo to reporting, no console error/warn/issue appeared, and screenshots were saved to D:\\connect-ai-office-upgrade-work\\connect-ai-moving-speech-bubbles.png and D:\\connect-ai-office-upgrade-work\\connect-ai-synced-moving-speech-bubbles.png."
+  },
   "ultragoalCheckpoint": {
     "status": "not_checkpointed",
     "evidence": "omx ultragoal checkpoint requires a fresh Codex get_goal snapshot, but this desktop thread exposes no get_goal/update_goal tools. No synthetic Codex goal snapshot was created."
