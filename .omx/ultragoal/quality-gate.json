@@ -37,6 +37,10 @@
     "status": "passed",
     "evidence": "Active employee speech bubbles now use the same office state-machine route as the moving 3D agent: desk to CEO table to desk, with the active bubble forced above the character. OfficeStage3D receives motionAgent/motionPhase/motionProgress from React so the 3D agent and HTML bubble stay synchronized. npm test and npm run build passed. Chrome DevTools verified .desk-terminal.moving-speech-bubble moved 312px across 12 samples, payload activeAgent=youtube matched the moving Leo bubble, motionPhase advanced walkingToCeo to reporting, no console error/warn/issue appeared, and screenshots were saved to D:\\connect-ai-office-upgrade-work\\connect-ai-moving-speech-bubbles.png and D:\\connect-ai-office-upgrade-work\\connect-ai-synced-moving-speech-bubbles.png."
   },
+  "sangAiOfficeSimulatorImport": {
+    "status": "passed",
+    "evidence": "Cloned https://github.com/lsi9923/sang-ai-office-simulator to D:\\connect-ai-office-upgrade-work\\sang-ai-office-simulator at 191430a and adapted its pixel office simulator into src/SangOfficeSimulator.tsx. The current app now uses that stage as the visible office floor, with sequential/parallel reporting, desk-to-CEO-to-desk motion, per-agent speech bubbles, collision offsets, and sourceRepo in render_game_to_text. npm test and npm run build passed. Chrome DevTools verified payload mode/sourceRepo, moving agent samples, desktop stage size, mobile no horizontal overflow, no console error/warn/issue, and screenshots at D:\\connect-ai-office-upgrade-work\\connect-ai-sang-simulator.png and D:\\connect-ai-office-upgrade-work\\connect-ai-sang-simulator-mobile.png."
+  },
   "ultragoalCheckpoint": {
     "status": "not_checkpointed",
     "evidence": "omx ultragoal checkpoint requires a fresh Codex get_goal snapshot, but this desktop thread exposes no get_goal/update_goal tools. No synthetic Codex goal snapshot was created."

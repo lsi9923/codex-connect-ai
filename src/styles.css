@@ -39,6 +39,9 @@ button { color: inherit; }
 .office-floor { position: relative; height: 720px; overflow: hidden; border-radius: 8px; border: 1px solid rgba(148, 163, 184, .2); background: #0f172a; box-shadow: inset 0 0 90px rgba(2,6,23,.72); }
 .office-floor::before { content: ''; position: absolute; inset: 0; z-index: 0; background-image: linear-gradient(180deg, rgba(2,6,23,.42), rgba(2,6,23,.72)), url('https://raw.githubusercontent.com/lsi9923/connect-ai/main/assets/map.jpeg'); background-size: cover; background-position: center; opacity: .24; filter: saturate(1.18) contrast(1.08); }
 .office-floor::after { content: ''; position: absolute; inset: 0; z-index: 2; pointer-events: none; background: radial-gradient(circle at 50% 52%, transparent 0 34%, rgba(2,6,23,.18) 58%, rgba(2,6,23,.46) 100%), linear-gradient(90deg, rgba(34,197,94,.06), transparent 34%, rgba(244,114,182,.05)); }
+.office-floor.sang-enabled > :not(.sang-sim-cover) { visibility: hidden; }
+.office-floor.sang-enabled .sang-sim-cover,
+.office-floor.sang-enabled .sang-sim-cover * { visibility: visible; }
 .three-office-stage { position: absolute; inset: 0; z-index: 4; overflow: hidden; background: linear-gradient(180deg, rgba(15,23,42,.56), rgba(30,41,59,.18) 46%, rgba(43,63,72,.18)); }
 .three-office-stage canvas { width: 100%; height: 100%; display: block; cursor: crosshair; }
 .office-room-shell { position: absolute; inset: 0; z-index: 1; overflow: hidden; border-radius: 8px; opacity: .34; background: linear-gradient(180deg, #1e293b 0 43%, #3f2c1d 43% 100%); }
@@ -147,6 +150,87 @@ button { color: inherit; }
 .live-status-panel b { color: #bbf7d0; font-size: 12px; }
 .live-status-panel span { position: relative; padding-left: 14px; color: #d1fae5; font-size: 11px; }
 .live-status-panel span::before { content: ''; position: absolute; left: 0; top: 6px; width: 6px; height: 6px; border-radius: 999px; background: #22c55e; box-shadow: 0 0 10px #22c55e; }
+
+.sang-sim-cover { position: absolute; inset: 0; z-index: 40; background: #050810; }
+.sang-sim-root { height: 100%; width: 100%; display: flex; flex-direction: column; overflow: hidden; background: #050810; color: #e2e8f0; font-family: 'JetBrains Mono', 'Fira Code', monospace; }
+.sang-sim-root::after { content: ''; position: absolute; inset: 0; z-index: 999; pointer-events: none; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.08) 2px, rgba(0,0,0,.08) 4px); opacity: .55; }
+.sang-sim-header { height: 48px; flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 0 16px; border-bottom: 1px solid rgba(0,255,65,.12); background: rgba(5,8,16,.98); box-shadow: 0 1px 20px rgba(0,255,65,.06); }
+.sang-sim-header div:first-child { min-width: 0; display: grid; gap: 3px; }
+.sang-sim-header b { color: #00ff41; font-size: 12px; letter-spacing: 2px; text-shadow: 0 0 12px rgba(0,255,65,.6); }
+.sang-sim-header span { color: rgba(0,255,65,.46); font-size: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sang-hud { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+.sang-hud span, .sang-hud button { min-height: 26px; display: inline-flex; align-items: center; border-radius: 4px; border: 1px solid rgba(0,255,65,.18); padding: 4px 8px; color: rgba(0,255,65,.72); background: rgba(0,255,65,.04); font-size: 9px; font-weight: 900; letter-spacing: 1px; }
+.sang-hud span.running { color: #22d3ee; border-color: rgba(34,211,238,.34); box-shadow: 0 0 12px rgba(34,211,238,.18); animation: sangRunningPulse 1.4s ease-in-out infinite; }
+.sang-hud button { cursor: pointer; color: #a78bfa; border-color: rgba(167,139,250,.35); background: rgba(167,139,250,.1); }
+.sang-hud button:disabled { opacity: .45; cursor: not-allowed; }
+.sang-sim-main { display: grid; grid-template-columns: minmax(0, 1fr) 320px; flex: 1; min-height: 0; }
+.sang-stage-panel { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding: 12px; border-right: 1px solid rgba(0,255,65,.09); }
+.sang-stage-label { height: 22px; flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 10px; color: rgba(0,255,65,.5); font-size: 9px; font-weight: 900; letter-spacing: 1.6px; }
+.sang-stage-label em { color: rgba(34,211,238,.72); font-style: normal; white-space: nowrap; }
+.sang-stage { position: relative; flex: 1; min-height: 0; overflow: hidden; border-radius: 8px; border: 1px solid rgba(0,255,65,.12); background: #050810; box-shadow: 0 0 30px rgba(0,255,65,.05), inset 0 0 34px rgba(0,0,0,.38); }
+.sang-office-bg { position: absolute; inset: 0; z-index: 0; background:
+  linear-gradient(155deg, rgba(8,13,28,.98) 0 34%, transparent 34.2%),
+  linear-gradient(205deg, rgba(8,13,28,.96) 0 34%, transparent 34.2%),
+  linear-gradient(180deg, #101a2b 0 28%, #1f3a38 28.2% 29%, #5f3a24 29.2% 100%); }
+.sang-office-bg::after { content: ''; position: absolute; inset: 29% 0 0; background-image: linear-gradient(rgba(34,211,238,.14) 1px, transparent 1px), linear-gradient(90deg, rgba(34,211,238,.12) 1px, transparent 1px); background-size: 80px 74px; opacity: .32; transform: perspective(480px) rotateX(56deg) translateY(-80px); transform-origin: top; }
+.sang-grid { position: absolute; inset: 0; z-index: 1; pointer-events: none; background-image: linear-gradient(rgba(0,255,65,.026) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,65,.026) 1px, transparent 1px); background-size: 32px 32px; }
+.sang-office-bg .wall-sign { position: absolute; left: 50%; top: 7%; transform: translateX(-50%); border: 2px solid rgba(134,239,172,.55); padding: 7px 13px; color: rgba(220,252,231,.76); font-size: 12px; font-weight: 1000; text-shadow: 0 0 10px rgba(134,239,172,.55); }
+.sang-office-bg .window { position: absolute; top: 12%; width: 52px; height: 66px; background: linear-gradient(180deg, rgba(14,165,233,.32), rgba(14,165,233,.1)); border: 1px solid rgba(125,211,252,.16); transform: skewX(-8deg); }
+.sang-office-bg .w1 { left: 23%; } .sang-office-bg .w2 { left: 30%; } .sang-office-bg .w3 { right: 29%; } .sang-office-bg .w4 { right: 22%; }
+.sang-desk-marker { position: absolute; z-index: 3; transform: translate(-50%, -50%); width: 42px; height: 42px; display: grid; place-items: center; border-radius: 999px; border: 1px solid rgba(255,255,255,.07); background: rgba(255,255,255,.03); font-size: 17px; transition: .35s ease; }
+.sang-desk-marker.active { border-color: color-mix(in srgb, var(--agent-color), transparent 48%); background: color-mix(in srgb, var(--agent-color), transparent 88%); box-shadow: 0 0 20px color-mix(in srgb, var(--agent-color), transparent 74%); animation: sangDeskPulse 1.8s ease-in-out infinite; }
+.sang-ceo-table { position: absolute; z-index: 5; transform: translate(-50%, -50%); width: 118px; height: 58px; display: grid; place-items: center; border-radius: 8px; border: 1px solid rgba(248,250,252,.18); background: linear-gradient(180deg, rgba(248,250,252,.08), rgba(15,23,42,.72)); box-shadow: 0 0 30px rgba(248,250,252,.12); }
+.sang-ceo-table b { color: #f8fafc; font-size: 17px; line-height: 1; }
+.sang-ceo-table small { color: #bae6fd; font-size: 9px; font-weight: 900; }
+.sang-beams { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+.sang-beams line { stroke-width: 2; stroke-linecap: round; opacity: .82; filter: drop-shadow(0 0 7px currentColor); animation: sangBeamPulse .75s ease-in-out infinite; }
+.sang-agent { position: absolute; width: 46px; height: 96px; border: 0; padding: 0; background: transparent; color: #fff; cursor: pointer; transform: translateZ(0); }
+.sang-agent-shadow { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); width: 42px; height: 9px; border-radius: 50%; background: radial-gradient(ellipse, color-mix(in srgb, var(--agent-color), transparent 22%), transparent 70%); opacity: .3; transition: .3s ease; }
+.sang-agent.active .sang-agent-shadow { width: 58px; height: 12px; opacity: .95; }
+.sang-agent-body { position: absolute; left: 50%; top: 4px; width: 34px; height: 68px; transform: translateX(-50%) rotate(var(--agent-tilt)); transform-origin: 50% 72%; animation: sangCharBob 2.2s ease-in-out infinite; filter: drop-shadow(0 6px 8px rgba(0,0,0,.78)); }
+.sang-agent.walking .sang-agent-body, .sang-agent.active .sang-agent-body { animation-duration: .72s; filter: drop-shadow(0 0 7px color-mix(in srgb, var(--agent-color), transparent 26%)) drop-shadow(0 6px 8px rgba(0,0,0,.84)); }
+.sang-agent-head { position: absolute; left: 4px; top: 0; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 6px 6px 4px 4px; border: 2px solid #111827; background: #f8d7b1; box-shadow: inset 0 7px 0 #111827; }
+.sang-agent-head em { position: absolute; left: -14px; top: -10px; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 5px; border: 1px solid color-mix(in srgb, var(--agent-color), transparent 34%); background: rgba(2,6,23,.86); font-style: normal; font-size: 12px; }
+.sang-agent-torso { position: absolute; left: 2px; top: 26px; width: 30px; height: 32px; border-radius: 5px; border: 2px solid #111827; background: linear-gradient(180deg, color-mix(in srgb, var(--agent-color), #fff 12%), color-mix(in srgb, var(--agent-color), #020617 24%)); }
+.sang-agent-torso::before, .sang-agent-torso::after { content: ''; position: absolute; top: 4px; width: 8px; height: 26px; border-radius: 5px; background: color-mix(in srgb, var(--agent-color), #0f172a 28%); }
+.sang-agent-torso::before { left: -9px; } .sang-agent-torso::after { right: -9px; }
+.sang-agent-leg { position: absolute; top: 57px; width: 9px; height: 18px; border-radius: 3px; background: #111827; transform-origin: 50% 0; }
+.sang-agent-leg.left { left: 7px; } .sang-agent-leg.right { right: 7px; }
+.sang-agent.walking .sang-agent-leg.left { animation: sangWalkLeg .45s ease-in-out infinite; }
+.sang-agent.walking .sang-agent-leg.right { animation: sangWalkLeg .45s ease-in-out infinite reverse; }
+.sang-agent-name { position: absolute; left: 50%; bottom: -4px; transform: translateX(-50%); display: grid; place-items: center; gap: 2px; pointer-events: none; white-space: nowrap; }
+.sang-agent-name b { color: color-mix(in srgb, var(--agent-color), #fff 16%); font-size: 10px; text-shadow: 0 0 8px color-mix(in srgb, var(--agent-color), transparent 20%); }
+.sang-agent-name small { border: 1px solid color-mix(in srgb, var(--agent-color), transparent 56%); border-radius: 3px; padding: 1px 4px; color: color-mix(in srgb, var(--agent-color), #fff 10%); background: color-mix(in srgb, var(--agent-color), transparent 88%); font-size: 7px; font-weight: 1000; }
+.sang-bubble { position: absolute; left: 50%; top: calc(-78px + var(--bubble-offset, 0px)); transform: translateX(-50%); width: max-content; min-width: 86px; max-width: 170px; padding: 7px 9px; border-radius: 8px; border: 1px solid color-mix(in srgb, var(--agent-color), transparent 52%); background: rgba(5,8,18,.95); color: #cbd5e1; font-size: 10px; font-weight: 850; line-height: 1.45; text-align: left; box-shadow: 0 0 16px color-mix(in srgb, var(--agent-color), transparent 78%), 0 8px 18px rgba(0,0,0,.52); animation: sangBubbleIn .22s cubic-bezier(.23,1,.32,1); pointer-events: none; white-space: normal; word-break: keep-all; }
+.sang-bubble::after { content: ''; position: absolute; left: 50%; bottom: -6px; transform: translateX(-50%); border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 6px solid color-mix(in srgb, var(--agent-color), transparent 52%); }
+.sang-bubble em { margin-right: 4px; font-style: normal; }
+.sang-arrival-particle { position: absolute; left: 50%; top: 48px; width: 5px; height: 5px; border-radius: 999px; background: var(--agent-color); box-shadow: 0 0 10px var(--agent-color); animation: sangArrivalBurst .62s ease-out forwards; }
+.sang-control-panel { min-height: 0; overflow-y: auto; overflow-x: hidden; background: rgba(8,12,24,.98); border-left: 1px solid rgba(0,255,65,.08); }
+.sang-control-panel section { padding: 12px; border-bottom: 1px solid rgba(0,255,65,.08); display: grid; gap: 9px; }
+.sang-control-panel strong { color: rgba(0,255,65,.72); font-size: 10px; letter-spacing: 1.5px; }
+.sang-control-panel textarea { width: 100%; min-height: 76px; resize: vertical; border-radius: 6px; border: 1px solid rgba(0,255,65,.2); background: rgba(0,255,65,.035); color: #e2e8f0; padding: 9px; font: inherit; font-size: 11px; line-height: 1.45; outline: none; }
+.sang-command-actions { display: grid; grid-template-columns: 1fr auto; gap: 7px; }
+.sang-command-actions button { min-height: 31px; border-radius: 5px; border: 1px solid rgba(0,255,65,.34); background: rgba(0,255,65,.09); color: #00ff41; font-weight: 1000; cursor: pointer; }
+.sang-command-actions button:last-child { border-color: rgba(34,211,238,.28); color: #22d3ee; background: rgba(34,211,238,.08); }
+.sang-command-actions button:disabled { opacity: .42; cursor: not-allowed; }
+.sang-current-command { margin: 0; padding: 7px 9px; border-left: 2px solid rgba(0,255,65,.38); background: rgba(0,255,65,.04); color: rgba(255,255,255,.68); font-size: 10px; line-height: 1.42; }
+.sang-agent-cards { display: grid; gap: 5px; }
+.sang-agent-card { min-height: 34px; display: grid; grid-template-columns: 24px 1fr auto; align-items: center; gap: 7px; border-radius: 6px; border: 1px solid rgba(255,255,255,.06); background: rgba(255,255,255,.025); color: rgba(255,255,255,.76); text-align: left; cursor: default; }
+.sang-agent-card.active { border-color: color-mix(in srgb, var(--agent-color), transparent 70%); background: color-mix(in srgb, var(--agent-color), transparent 94%); box-shadow: 0 0 12px color-mix(in srgb, var(--agent-color), transparent 88%); }
+.sang-agent-card span { text-align: center; font-size: 14px; }
+.sang-agent-card b { font-size: 11px; }
+.sang-agent-card small { color: color-mix(in srgb, var(--agent-color), #fff 12%); font-size: 8px; font-weight: 1000; padding-right: 8px; }
+.sang-log-section { min-height: 0; }
+.sang-log-section div { max-height: 150px; overflow-y: auto; display: grid; gap: 4px; }
+.sang-log-section p { margin: 0; padding: 4px 6px; border-radius: 4px; border-left: 1px solid rgba(0,255,65,.1); background: rgba(255,255,255,.025); color: rgba(255,255,255,.48); font-size: 10px; line-height: 1.35; }
+.sang-log-section p span { color: rgba(0,255,65,.68); font-weight: 900; margin-right: 6px; }
+@keyframes sangRunningPulse { 50% { box-shadow: 0 0 18px rgba(34,211,238,.32); } }
+@keyframes sangDeskPulse { 50% { transform: translate(-50%, -50%) scale(1.08); } }
+@keyframes sangBeamPulse { 50% { opacity: .48; stroke-width: 3; } }
+@keyframes sangCharBob { 50% { transform: translateX(-50%) translateY(-3px) rotate(var(--agent-tilt)); } }
+@keyframes sangWalkLeg { 50% { transform: rotate(18deg) translateY(2px); } }
+@keyframes sangBubbleIn { from { opacity: 0; transform: translateX(-50%) translateY(8px) scale(.96); } }
+@keyframes sangArrivalBurst { to { opacity: 0; transform: rotate(var(--angle)) translateX(var(--dist)) scale(.2); } }
 @keyframes progressPulse { 50% { filter: brightness(1.25); transform: translateX(2px); } }
 .profile-panel, .command-center, .task-board, .brain-panel, .approval-panel, .video-panel, .reports, .routing-panel, .hermes-desktop-panel { padding: 18px; }
 .workbench-grid { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(320px, .82fr) minmax(320px, .82fr); gap: 18px; align-items: start; }
@@ -333,6 +417,14 @@ select:focus, textarea:focus { border-color: rgba(125,211,252,.58); box-shadow: 
   .hero h1 { font-size: 34px; }
   .office-card { min-height: 640px; }
   .office-floor { height: 540px; }
+  .sang-sim-root { padding: 6px; gap: 6px; }
+  .sang-sim-header { min-height: 48px; height: auto; flex-wrap: wrap; padding: 8px; }
+  .sang-sim-main { grid-template-columns: 1fr; gap: 6px; }
+  .sang-control-panel { display: none; }
+  .sang-stage-panel { min-height: 0; }
+  .sang-stage { min-height: 430px; }
+  .sang-stage-label em { display: none; }
+  .sang-hud { grid-template-columns: repeat(2, minmax(0,1fr)); width: 100%; }
   .command-grid, .task-grid, .right-col, .hermes-ops-grid, .workbench-grid, .ops-signal-strip, .ops-control-grid, .ops-control-console, .telegram-identity, .reference-grid { grid-template-columns: 1fr; }
   .workbench-grid .task-board, .workbench-grid .reports, .workbench-grid .video-panel { grid-column: auto; }
   .room-card { width: 150px; min-height: 58px; padding: 8px; }

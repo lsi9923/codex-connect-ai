@@ -12,6 +12,8 @@ const simulatorTs = fs.readFileSync(new URL('../src/simulator.ts', import.meta.u
 const appTsx = fs.readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
 const skillCatalogTs = fs.readFileSync(new URL('../src/skillCatalog.ts', import.meta.url), 'utf8');
 const officeStageTsx = fs.readFileSync(new URL('../src/OfficeStage3D.tsx', import.meta.url), 'utf8');
+const sangSimTsx = fs.readFileSync(new URL('../src/SangOfficeSimulator.tsx', import.meta.url), 'utf8');
+const stylesCss = fs.readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8');
 const required = ['ceo', 'youtube', 'instagram', 'designer', 'developer', 'business', 'secretary', 'editor', 'writer', 'researcher'];
 for (const id of required) {
   assert(new RegExp(`${id}:\\s*\\{`).test(agentsTs), `에이전트 정의 누락: ${id}`);
@@ -33,6 +35,7 @@ assert(!appTsx.includes('title={`${agent.name}'), '브라우저 기본 title 툴
 assert(appTsx.includes('speechBubbleLayouts') && appTsx.includes('taskSpeechLine') && appTsx.includes('desk-terminal-output'), '각 직원별 업무 말풍선에는 업무명, 현재 상태, 보고 문장이 보여야 합니다.');
 assert(appTsx.includes('movingSpeechBubblePosition') && appTsx.includes('motionPhaseProgress') && appTsx.includes('requestAnimationFrame') && appTsx.includes('moving-speech-bubble'), '활성 직원 말풍선은 애니메이션 좌표를 따라 위쪽에서 같이 움직여야 합니다.');
 assert(appTsx.includes('motionAgent={engine.agent}') && officeStageTsx.includes('motionRef') && officeStageTsx.includes('motionPhase') && officeStageTsx.includes('motionProgress'), '3D 캐릭터와 HTML 말풍선은 같은 직원/단계/진행률 상태를 공유해야 합니다.');
+assert(appTsx.includes('SangOfficeSimulator') && sangSimTsx.includes('https://github.com/lsi9923/sang-ai-office-simulator') && sangSimTsx.includes('processParallel') && sangSimTsx.includes('computeBubbleOffsets') && stylesCss.includes('sang-sim-cover'), 'lsi9923/sang-ai-office-simulator 기반 시뮬레이션을 현재 무대 크기에 맞춰 포함해야 합니다.');
 assert(appTsx.includes('통합 업무 말풍선') && !appTsx.includes('className="route-director"'), '직원 이동 상태와 업무 상태는 별도 중앙 말풍선이 아니라 직원별 통합 말풍선 하나로 보여야 합니다.');
 assert(!appTsx.includes('work-packet') && !appTsx.includes('packet-a'), '전략/분석/보고 같은 떠다니는 보조 라벨은 직원 통합 말풍선과 중복되므로 없어야 합니다.');
 assert(appTsx.includes('OfficeStage3D'), 'Three.js 3D 사무실 무대가 앱에 연결되어야 합니다.');

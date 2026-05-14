@@ -51,6 +51,7 @@ import {
   skillSourceLabel,
 } from './skillCatalog';
 import { OfficeStage3D } from './OfficeStage3D';
+import { SangOfficeSimulator } from './SangOfficeSimulator';
 import './styles.css';
 
 const videos = [
@@ -358,7 +359,7 @@ function Office({
         </div>
       </div>
 
-      <div className="office-floor">
+      <div className="office-floor sang-enabled">
         <OfficeStage3D
           plan={plan}
           activeAgent={activeAgent}
@@ -485,6 +486,9 @@ function Office({
           <span>{plan.tasks.filter((task) => task.status === 'running').length}명 작업 중</span>
           <span>{plan.tasks.filter((task) => task.status === 'approval').length}건 승인 대기</span>
           <span>모델 선택 가능</span>
+        </div>
+        <div className="sang-sim-cover">
+          <SangOfficeSimulator plan={plan} selectAgent={selectAgent} />
         </div>
 
       </div>
