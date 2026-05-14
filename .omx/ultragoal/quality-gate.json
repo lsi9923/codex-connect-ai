@@ -10,12 +10,20 @@
       "npm run build",
       "Invoke-WebRequest -UseBasicParsing -Uri http://127.0.0.1:5199/"
     ],
-    "evidence": "npm test passed, Vite production build passed, and the running dev server returned HTTP 200. Playwright smoke verified task distribution, model selection, approval buttons, desk terminals, skill editor, recommendation attach, direct custom skill add, no native title popups, and zero console errors."
+    "evidence": "npm test passed, Vite production build passed, and the running dev server returned HTTP 200. Playwright/Chrome smoke verified task distribution, model selection, approval buttons, desk terminals, skill editor, recommendation attach, direct custom skill add, no native title popups, zero console errors, a nonblank Three.js canvas, no old .agent-node cards, actual active-agent position movement after advancing the simulation clock, and the Hermes Desktop ops panel with slash commands and closed learning loop."
   },
   "codeReview": {
     "recommendation": "APPROVE",
     "architectStatus": "CLEAR",
-    "evidence": "Reviewed App.tsx, agents.ts, simulator.ts, skillCatalog.ts, styles.css, index.html, and scripts/check-agents.mjs for safety, data flow, UI behavior, and maintainability. No blocking correctness, security, or architecture issues found."
+    "evidence": "Reviewed App.tsx, OfficeStage3D.tsx, agents.ts, simulator.ts, skillCatalog.ts, styles.css, index.html, vite.config.ts, and scripts/check-agents.mjs for safety, data flow, UI behavior, and maintainability. The latest pass adds Hermes Desktop-inspired profiles, memory, skills, schedules, gateways, slash commands, and 3D system towers without adding external runtime calls. No blocking correctness, security, or architecture issues found."
+  },
+  "gameMotionUpgrade": {
+    "status": "passed",
+    "evidence": "Added src/OfficeStage3D.tsx using Three.js with LEGO/block-style agents, desks, CEO room, floor grid, route line, moving work packet, idle bobbing, active desk-to-CEO-to-desk movement, raycast agent selection, deterministic render_game_to_text/advanceTime browser hooks, and Hermes MEMORY/SKILLS/GATEWAY/CRON towers around the CEO learning loop. Screenshots saved under D:\\connect-ai-office-upgrade-work."
+  },
+  "hermesDesktopReferenceUpgrade": {
+    "status": "passed",
+    "evidence": "Cloned https://github.com/fathah/hermes-desktop into D:\\connect-ai-office-upgrade-work\\refs\\hermes-desktop and used README/source references for visible UI concepts: profiles, memory, skills, toolsets, schedules, gateways, slash commands, and Claw3d/Hermes Office. Browser verification confirmed the new Hermes Desktop ops panel, slash command rail, nonblank 3D canvas, moving active agent, and hermesSystems payload."
   },
   "ultragoalCheckpoint": {
     "status": "not_checkpointed",

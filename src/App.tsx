@@ -51,26 +51,21 @@ import {
   recommendSkillsForAgent,
   skillSourceLabel,
 } from './skillCatalog';
+import { OfficeStage3D } from './OfficeStage3D';
 import './styles.css';
 
 const videos = [
+  { id: 'YBp_PXBbe80', title: 'Hermes Desktop 3D 에이전트 UI 참고', tag: 'Hermes Desktop · 3D agent' },
   { id: 'qDKHEXZ8p6w', title: 'AI 직원 10명이 24시간 일하는 완전 무료 프로그램', tag: '1강 · AI 1인 기업 자동화' },
   { id: '5KJ_cuwMcNY', title: '무료 AI 직원이 내 유튜브 채널 분석해서 Telegram으로 보고', tag: '2강 · YouTube + Telegram' },
   { id: 'jpd7gYchCbQ', title: '월급 0원 AI 직원 5명 고용 + 코드 무료 공유', tag: '3강 · 코딩/경영/수익성 웹사이트' },
 ];
 
-const activityLabels: Record<AgentId, string> = {
-  ceo: '업무 분배 중',
-  youtube: '채널 분석',
-  instagram: '릴스 기획',
-  designer: '썸네일 제작',
-  developer: '코드 구현',
-  business: '수익 계산',
-  secretary: 'Telegram 보고',
-  editor: 'BGM 편집',
-  writer: '후크 작성',
-  researcher: '자료 검증',
-};
+const referenceLinks = [
+  { href: 'https://github.com/fathah/hermes-desktop', tag: 'GitHub Repo', title: 'Hermes Desktop · profiles, memory, skills, schedules, gateways, Claw3d' },
+  { href: 'https://hermes-agent.nousresearch.com/docs', tag: 'Hermes Docs', title: 'Hermes Agent documentation' },
+  { href: 'https://hermes-agent.nousresearch.com/docs/user-stories', tag: 'Use Cases', title: 'Hermes Agent user stories' },
+];
 
 const rooms = [
   { name: 'CEO 전략실', desc: '목표를 쪼개고 승인 기준을 정함', pos: 'top' },
@@ -97,19 +92,6 @@ const phaseDurations: Record<MotionPhase, number> = {
 
 const phaseOrder: MotionPhase[] = ['walkingToCeo', 'reporting', 'walkingBack', 'idle'];
 
-const walkVectors: Record<AgentId, { x: number; y: number; routeX: number; routeY: number; delay: string; duration: string }> = {
-  ceo: { x: 0, y: -10, routeX: 0, routeY: 0, delay: '0s', duration: '8s' },
-  youtube: { x: 12, y: 10, routeX: 255, routeY: 190, delay: '-.2s', duration: '13s' },
-  instagram: { x: 10, y: 12, routeX: 128, routeY: 216, delay: '-2.1s', duration: '14.5s' },
-  designer: { x: -10, y: 12, routeX: -128, routeY: 216, delay: '-4.4s', duration: '15s' },
-  developer: { x: -12, y: 10, routeX: -255, routeY: 190, delay: '-6.2s', duration: '13.8s' },
-  business: { x: 14, y: -10, routeX: 288, routeY: -140, delay: '-1.3s', duration: '16s' },
-  secretary: { x: 10, y: -14, routeX: 144, routeY: -215, delay: '-5.1s', duration: '14s' },
-  editor: { x: 0, y: -14, routeX: 0, routeY: -250, delay: '-7.6s', duration: '15.5s' },
-  writer: { x: -10, y: -14, routeX: -144, routeY: -215, delay: '-3.3s', duration: '14.8s' },
-  researcher: { x: -14, y: -10, routeX: -288, routeY: -140, delay: '-8.7s', duration: '16.5s' },
-};
-
 const taskStatusLabel: Record<AgentTask['status'], string> = {
   queued: '대기',
   running: '작업 중',
@@ -123,66 +105,12 @@ const approvalChoices: { label: ApprovalStatus; short: string }[] = [
   { label: '거절됨', short: '거절' },
 ];
 
+const hermesSlashCommands = ['/memory', '/skills', '/tools', '/status', '/usage', '/model', '/browse', '/code', '/schedule'];
+const hermesGateways = ['Telegram', 'Discord', 'Slack', 'Webhooks', 'Email', 'Home Assistant'];
+const hermesLoopLabels = ['업무 관찰', '장기 기억 저장', '스킬 개선 제안', '예약 실행 대기'];
+
 function modelLabel(modelId: string) {
   return modelOptions.find((item) => item.id === modelId)?.label || modelId.split('/').pop() || modelId;
-}
-
-function AgentAvatar({
-  agent,
-  active,
-  motionPhase,
-  task,
-  onClick,
-}: {
-  agent: AgentDef;
-  active: boolean;
-  motionPhase: MotionPhase;
-  task?: AgentTask;
-  onClick: () => void;
-}) {
-  const walk = walkVectors[agent.id];
-  const motionClass = agent.id === 'ceo' ? 'ceo-node' : motionPhase;
-  const speech = motionPhase === 'walkingToCeo'
-    ? '보고하러 이동'
-    : motionPhase === 'reporting'
-      ? `${task ? taskStatusLabel[task.status] : '보고 중'} ${task?.progress ?? ''}%`
-      : motionPhase === 'walkingBack'
-        ? '자리 복귀'
-        : task
-          ? `${taskStatusLabel[task.status]} ${task.progress}%`
-          : activityLabels[agent.id];
-
-  return (
-    <button
-      type="button"
-      className={`agent-node ${motionClass} ${active ? 'active' : ''} ${task?.status || 'idle-task'}`}
-      style={{
-        left: `${agent.desk.x}%`,
-        top: `${agent.desk.y}%`,
-        ['--agent-color' as string]: agent.color,
-        ['--walk-x' as string]: `${walk.x}px`,
-        ['--walk-y' as string]: `${walk.y}px`,
-        ['--route-x' as string]: `${walk.routeX}px`,
-        ['--route-y' as string]: `${walk.routeY}px`,
-        ['--walk-delay' as string]: walk.delay,
-        ['--route-duration' as string]: walk.duration,
-      }}
-      onClick={onClick}
-      aria-label={`${agent.name} ${agent.role}`}
-    >
-      <span className="pulse-ring" />
-      <span className="agent-shadow" />
-      <span className="agent-body">
-        <span className="talk-bubble">{speech}</span>
-        <span className="status-lamp" />
-        {agent.profileImage ? <img src={agent.profileImage} alt={agent.name} /> : <span className="emoji-face">{agent.emoji}</span>}
-        <span className="agent-name">{agent.name}</span>
-        <span className="agent-role">{task ? task.title : agent.role}</span>
-        <span className="agent-skill-count">{task ? `${task.skills.length} skills` : 'CEO'}</span>
-        <span className="agent-feet"><i /><i /></span>
-      </span>
-    </button>
-  );
 }
 
 function Office({ activeAgent, plan, selectAgent }: { activeAgent: AgentId; plan: OfficePlan; selectAgent: (id: AgentId) => void }) {
@@ -231,6 +159,7 @@ function Office({ activeAgent, plan, selectAgent }: { activeAgent: AgentId; plan
       </div>
 
       <div className="office-floor">
+        <OfficeStage3D plan={plan} activeAgent={activeAgent} selectAgent={selectAgent} />
         <div className="office-room-shell">
           <div className="back-wall">
             <div className="window window-a"><span /></div>
@@ -347,16 +276,6 @@ function Office({ activeAgent, plan, selectAgent }: { activeAgent: AgentId; plan
           <span>모델 선택 가능</span>
         </div>
 
-        {AGENT_ORDER.map((id) => (
-          <AgentAvatar
-            key={id}
-            agent={AGENTS[id]}
-            active={activeAgent === id || engine.agent === id}
-            motionPhase={id === engine.agent ? engine.phase : 'idle'}
-            task={tasksByAgent.get(id)}
-            onClick={() => selectAgent(id)}
-          />
-        ))}
       </div>
     </section>
   );
@@ -411,6 +330,8 @@ function SkillEditor({
       </div>
       <div className="skill-add-row">
         <input
+          id={`skill-input-${agent.id}`}
+          name={`skill-input-${agent.id}`}
           ref={inputRef}
           onKeyDown={(event) => {
             if (event.key === 'Enter') {
@@ -467,7 +388,12 @@ function ProfilePanel({
       <div className="quote">"{agent.tagline}"</div>
       <label className="field-label">
         <span><Cpu size={14} /> 담당 모델</span>
-        <select value={model} onChange={(event) => onModelChange(agent.id, event.target.value)}>
+        <select
+          id={`profile-model-${agent.id}`}
+          name={`profile-model-${agent.id}`}
+          value={model}
+          onChange={(event) => onModelChange(agent.id, event.target.value)}
+        >
           {modelOptions.map((option) => (
             <option key={option.id} value={option.id}>{option.provider} · {option.label}</option>
           ))}
@@ -509,7 +435,12 @@ function CommandCenter({
     <section className="command-center glass">
       <div className="section-title"><Sparkles size={18} /><span>CEO 명령창</span></div>
       <div className="command-grid">
-        <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} />
+        <textarea
+          id="ceo-command-prompt"
+          name="ceo-command-prompt"
+          value={prompt}
+          onChange={(event) => setPrompt(event.target.value)}
+        />
         <div className="command-summary">
           <strong>{plan.headline}</strong>
           <span>{plan.telegramDigest}</span>
@@ -524,6 +455,101 @@ function CommandCenter({
         <button className="primary-btn" onClick={runPlan}><Play size={16} /> CEO에게 작업 분배</button>
         <button className="ghost-btn" onClick={applyRecommendedToAll}><Wand2 size={16} /> 전 직원 추천 스킬 붙이기</button>
         <span className="safe-note"><Lock size={14} /> Telegram, 파일 쓰기, GitHub push는 승인 대기 흐름으로 표시</span>
+      </div>
+    </section>
+  );
+}
+
+function HermesDesktopOpsPanel({
+  plan,
+  skillSettings,
+  activeAgent,
+  selectAgent,
+}: {
+  plan: OfficePlan;
+  skillSettings: SkillSettings;
+  activeAgent: AgentId;
+  selectAgent: (id: AgentId) => void;
+}) {
+  const totalSkills = AGENT_ORDER.reduce((sum, id) => sum + (skillSettings[id] || AGENTS[id].suggestedSkills).length, 0);
+  const runningCount = plan.tasks.filter((task) => task.status === 'running').length;
+  const approvalCount = plan.approvals.filter((item) => item.status === '승인 대기').length;
+  const activeTask = plan.tasks.find((task) => task.agent === activeAgent);
+  const activeSkillCount = (skillSettings[activeAgent] || AGENTS[activeAgent].suggestedSkills).length;
+  const memoryPressure = Math.min(96, 42 + plan.reports.length * 4 + runningCount * 5);
+  const learningRows = hermesLoopLabels.map((label, idx) => ({
+    label,
+    value: Math.min(98, memoryPressure - idx * 9 + (idx === 2 ? activeSkillCount : 0)),
+    state: idx === 2 && activeSkillCount > 5 ? 'improving' : idx === 3 && approvalCount > 0 ? 'waiting' : 'live',
+  }));
+  const profiles = [
+    { id: 'default', label: 'CEO 운영실', agent: 'ceo' as AgentId, provider: 'OpenAI', status: 'active' },
+    { id: 'growth', label: '콘텐츠 성장팀', agent: 'youtube' as AgentId, provider: 'LM Studio', status: 'running' },
+    { id: 'build', label: '개발 자동화팀', agent: 'developer' as AgentId, provider: 'OpenRouter', status: 'running' },
+    { id: 'telegram', label: '보고/승인팀', agent: 'secretary' as AgentId, provider: 'Ollama', status: approvalCount ? 'approval' : 'standby' },
+  ];
+
+  return (
+    <section className="hermes-desktop-panel glass">
+      <div className="section-title">
+        <Workflow size={18} />
+        <span>Hermes Desktop 운영 레이어</span>
+      </div>
+      <div className="hermes-ops-strip">
+        <span><Cpu size={14} /> Local API 127.0.0.1:8642</span>
+        <span><Brain size={14} /> Memory {memoryPressure}%</span>
+        <span><Layers3 size={14} /> Skills {totalSkills}개</span>
+        <span><Send size={14} /> Gateways {hermesGateways.length}/16 표시</span>
+      </div>
+
+      <div className="hermes-ops-grid">
+        <div className="hermes-profile-stack">
+          <strong><Settings2 size={14} /> Profiles</strong>
+          {profiles.map((profile) => {
+            const agent = AGENTS[profile.agent];
+            const skills = skillSettings[profile.agent] || agent.suggestedSkills;
+            return (
+              <button type="button" className={activeAgent === profile.agent ? 'active' : ''} key={profile.id} onClick={() => selectAgent(profile.agent)}>
+                <span>{agent.emoji}</span>
+                <b>{profile.label}</b>
+                <small>{profile.provider} · {modelLabel(agent.defaultModel)} · {skills.length} skills</small>
+                <em>{profile.status}</em>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="learning-loop">
+          <strong><Brain size={14} /> Closed Learning Loop</strong>
+          {learningRows.map((row) => (
+            <div className={`loop-row ${row.state}`} key={row.label}>
+              <span>{row.label}</span>
+              <i><b style={{ width: `${row.value}%` }} /></i>
+              <em>{row.value}%</em>
+            </div>
+          ))}
+          <p>{activeTask ? `${AGENTS[activeTask.agent].name} 작업 결과가 MEMORY.md와 새 스킬 후보로 들어가는 흐름입니다.` : 'CEO 지시가 장기 기억과 스킬 후보로 정리됩니다.'}</p>
+        </div>
+
+        <div className="gateway-schedule">
+          <strong><Radio size={14} /> Gateways & Schedules</strong>
+          <div className="gateway-grid">
+            {hermesGateways.map((gateway, idx) => (
+              <span className={gateway === 'Telegram' && approvalCount ? 'waiting' : 'live'} key={gateway}>
+                {gateway}<em>{idx === 0 ? `${approvalCount} approval` : 'armed'}</em>
+              </span>
+            ))}
+          </div>
+          <div className="cron-queue">
+            <span><Clock size={13} /> 매일 09:00 보고서</span>
+            <span><Clock size={13} /> 2시간마다 유튜브 분석</span>
+            <span><Clock size={13} /> 승인 후 Telegram 전송</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="slash-rail">
+        {hermesSlashCommands.map((command) => <code key={command}>{command}</code>)}
       </div>
     </section>
   );
@@ -579,7 +605,12 @@ function ModelRoutingPanel({
                 <span>{agent.emoji}</span>
                 <strong>{agent.name}</strong>
               </button>
-              <select value={modelSettings[id]} onChange={(event) => onModelChange(id, event.target.value)}>
+              <select
+                id={`routing-model-${id}`}
+                name={`routing-model-${id}`}
+                value={modelSettings[id]}
+                onChange={(event) => onModelChange(id, event.target.value)}
+              >
                 {modelOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
               </select>
               <small>{(skillSettings[id] || agent.suggestedSkills).slice(0, 4).join(' · ')}</small>
@@ -643,11 +674,17 @@ function ApprovalPanel({
 function VideoPanel() {
   return (
     <section className="video-panel glass">
-      <div className="section-title"><Smartphone size={18} /><span>반영 기준 영상 3개</span></div>
+      <div className="section-title"><Smartphone size={18} /><span>반영 기준 영상/문서</span></div>
       {videos.map((video) => (
         <a key={video.id} href={`https://www.youtube.com/watch?v=${video.id}`} target="_blank" rel="noreferrer">
           <span>{video.tag}</span>
           <strong>{video.title}</strong>
+        </a>
+      ))}
+      {referenceLinks.map((link) => (
+        <a key={link.href} href={link.href} target="_blank" rel="noreferrer">
+          <span>{link.tag}</span>
+          <strong>{link.title}</strong>
         </a>
       ))}
     </section>
@@ -733,6 +770,7 @@ export default function App() {
         <div className="left-col">
           <Office activeAgent={activeAgent} plan={plan} selectAgent={setActiveAgent} />
           <CommandCenter prompt={prompt} plan={plan} setPrompt={setPrompt} runPlan={runPlan} applyRecommendedToAll={applyRecommendedToAll} />
+          <HermesDesktopOpsPanel plan={plan} skillSettings={skillSettings} activeAgent={activeAgent} selectAgent={setActiveAgent} />
           <TaskBoard plan={plan} selectAgent={setActiveAgent} />
         </div>
         <div className="right-col">

@@ -11,6 +11,7 @@ const agentsTs = fs.readFileSync(new URL('../src/agents.ts', import.meta.url), '
 const simulatorTs = fs.readFileSync(new URL('../src/simulator.ts', import.meta.url), 'utf8');
 const appTsx = fs.readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
 const skillCatalogTs = fs.readFileSync(new URL('../src/skillCatalog.ts', import.meta.url), 'utf8');
+const officeStageTsx = fs.readFileSync(new URL('../src/OfficeStage3D.tsx', import.meta.url), 'utf8');
 const required = ['ceo', 'youtube', 'instagram', 'designer', 'developer', 'business', 'secretary', 'editor', 'writer', 'researcher'];
 for (const id of required) {
   assert(new RegExp(`${id}:\\s*\\{`).test(agentsTs), `에이전트 정의 누락: ${id}`);
@@ -21,5 +22,9 @@ assert(simulatorTs.includes('approvalItems'), '승인 대기함 안전장치가 
 assert(simulatorTs.includes('00_Raw') && simulatorTs.includes('10_Wiki') && simulatorTs.includes('20_Meta'), 'P-Reinforce 폴더 구조가 필요합니다.');
 assert(skillCatalogTs.includes('localSkillCatalog') && skillCatalogTs.includes('recommendSkillsForAgent'), '로컬 스킬 추천 카탈로그가 필요합니다.');
 assert(appTsx.includes('SkillEditor') && appTsx.includes('전 직원 추천 스킬 붙이기'), '직원별 스킬 편집/추천 UI가 필요합니다.');
+assert(appTsx.includes('HermesDesktopOpsPanel') && appTsx.includes('Closed Learning Loop'), 'Hermes Desktop식 운영 레이어가 필요합니다.');
 assert(!appTsx.includes('title={`${agent.name}'), '브라우저 기본 title 툴팁 팝업은 제거되어야 합니다.');
-console.log('OK: Connect AI 10 agents + P-Reinforce + approval safety verified.');
+assert(appTsx.includes('OfficeStage3D'), 'Three.js 3D 사무실 무대가 앱에 연결되어야 합니다.');
+assert(officeStageTsx.includes("from 'three'") && officeStageTsx.includes('render_game_to_text') && officeStageTsx.includes('advanceTime'), '3D 게임 무대는 Three.js와 테스트 훅을 제공해야 합니다.');
+assert(officeStageTsx.includes('makeSystemTower') && officeStageTsx.includes('hermesSystems'), '3D 무대에는 Hermes memory/skill/gateway/scheduler 시스템 오브젝트가 필요합니다.');
+console.log('OK: Connect AI 10 agents + P-Reinforce + Hermes Desktop 3D ops verified.');
