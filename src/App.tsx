@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   BadgeCheck,
   Brain,
@@ -12,10 +12,14 @@ import {
   FileText,
   FolderKanban,
   GitBranch,
+  Layers3,
   Lock,
+  MapPinned,
   MessageSquareText,
   Play,
+  Plus,
   Radio,
+  Route,
   Send,
   Settings2,
   ShieldCheck,
@@ -23,6 +27,8 @@ import {
   Smartphone,
   Sparkles,
   Workflow,
+  Wand2,
+  X,
   Zap,
 } from 'lucide-react';
 import { AGENTS, AGENT_ORDER, AgentDef, AgentId, SPECIALIST_IDS } from './agents';
@@ -37,6 +43,14 @@ import {
   makePlan,
   modelOptions,
 } from './simulator';
+import {
+  SkillSettings,
+  buildDefaultSkillSettings,
+  localSkillCatalog,
+  normalizeSkillList,
+  recommendSkillsForAgent,
+  skillSourceLabel,
+} from './skillCatalog';
 import './styles.css';
 
 const videos = [
@@ -140,6 +154,7 @@ function AgentAvatar({
 
   return (
     <button
+      type="button"
       className={`agent-node ${motionClass} ${active ? 'active' : ''} ${task?.status || 'idle-task'}`}
       style={{
         left: `${agent.desk.x}%`,
@@ -153,15 +168,18 @@ function AgentAvatar({
         ['--route-duration' as string]: walk.duration,
       }}
       onClick={onClick}
-      title={`${agent.name} · ${agent.role}`}
+      aria-label={`${agent.name} ${agent.role}`}
     >
       <span className="pulse-ring" />
       <span className="agent-shadow" />
       <span className="agent-body">
         <span className="talk-bubble">{speech}</span>
+        <span className="status-lamp" />
         {agent.profileImage ? <img src={agent.profileImage} alt={agent.name} /> : <span className="emoji-face">{agent.emoji}</span>}
         <span className="agent-name">{agent.name}</span>
         <span className="agent-role">{task ? task.title : agent.role}</span>
+        <span className="agent-skill-count">{task ? `${task.skills.length} skills` : 'CEO'}</span>
+        <span className="agent-feet"><i /><i /></span>
       </span>
     </button>
   );
@@ -259,6 +277,26 @@ function Office({ activeAgent, plan, selectAgent }: { activeAgent: AgentId; plan
         <div className="desk desk-c">DEV</div>
         <div className="desk desk-d">BIZ</div>
         <div className="desk desk-e">TXT</div>
+        {plan.tasks.map((task) => {
+          const agent = AGENTS[task.agent];
+          return (
+            <button
+              type="button"
+              key={`terminal-${task.id}`}
+              className={`desk-terminal ${task.status}`}
+              style={{
+                left: `${agent.desk.x}%`,
+                top: `${agent.desk.y}%`,
+                ['--agent-color' as string]: agent.color,
+              }}
+              onClick={() => selectAgent(task.agent)}
+            >
+              <b>{agent.emoji} {agent.name}</b>
+              <span>{taskStatusLabel[task.status]} · {task.progress}%</span>
+              <i style={{ width: `${task.progress}%` }} />
+            </button>
+          );
+        })}
         <div className="walking-lane lane-a" />
         <div className="walking-lane lane-b" />
         <div className="grid-lines" />
@@ -274,11 +312,17 @@ function Office({ activeAgent, plan, selectAgent }: { activeAgent: AgentId; plan
         </svg>
 
         <div className="game-state-panel">
-          <b>State Machine</b>
+          <b><MapPinned size={13} /> State Machine</b>
           <span>직원: {currentAgent.emoji} {currentAgent.name}</span>
           <span>단계: {phaseLabels[engine.phase]}</span>
           <span>업무: {currentTask?.title || 'CEO 운영'}</span>
           <span>모델: {modelLabel(currentTask?.model || currentAgent.defaultModel)}</span>
+          <span>동선: 책상 → 복도 → CEO 방 → 자리</span>
+        </div>
+        <div className="route-director">
+          <Route size={15} />
+          <strong>{currentAgent.name}</strong>
+          <span>{phaseLabels[engine.phase]}</span>
         </div>
 
         <div className="work-packet packet-a">전략</div>
@@ -318,14 +362,95 @@ function Office({ activeAgent, plan, selectAgent }: { activeAgent: AgentId; plan
   );
 }
 
+function SkillEditor({
+  agent,
+  prompt,
+  skills,
+  onSkillsChange,
+  onRecommendSkills,
+}: {
+  agent: AgentDef;
+  prompt: string;
+  skills: string[];
+  onSkillsChange: (id: AgentId, skills: string[]) => void;
+  onRecommendSkills: (id: AgentId) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const recommendations = useMemo(() => {
+    return recommendSkillsForAgent(agent.id, prompt, 9).filter((skill) => !skills.includes(skill.id));
+  }, [agent.id, prompt, skills]);
+
+  const addSkill = (skill: string) => {
+    onSkillsChange(agent.id, normalizeSkillList([...skills, skill]));
+  };
+
+  const removeSkill = (skill: string) => {
+    onSkillsChange(agent.id, skills.filter((item) => item !== skill));
+  };
+
+  const addDraft = () => {
+    const value = inputRef.current?.value.trim() || '';
+    if (value) {
+      addSkill(value);
+      if (inputRef.current) inputRef.current.value = '';
+    }
+  };
+
+  return (
+    <div className="skill-editor">
+      <div className="skill-editor-head">
+        <span><Layers3 size={14} /> 스킬 편집</span>
+        <button type="button" onClick={() => onRecommendSkills(agent.id)}><Wand2 size={14} /> 추천 자동 부착</button>
+      </div>
+      <div className="editable-skills">
+        {skills.map((skill) => (
+          <button type="button" key={skill} onClick={() => removeSkill(skill)}>
+            {skill}<X size={12} />
+          </button>
+        ))}
+      </div>
+      <div className="skill-add-row">
+        <input
+          ref={inputRef}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              addDraft();
+            }
+          }}
+          placeholder="직접 스킬 이름 입력"
+        />
+        <button type="button" onClick={addDraft}><Plus size={14} /> 추가</button>
+      </div>
+      <div className="skill-suggestions">
+        <strong>추천 후보 · 로컬 {localSkillCatalog.length}개 스킬/도구에서 매칭</strong>
+        {recommendations.map((skill) => (
+          <button type="button" key={skill.id} onClick={() => addSkill(skill.id)}>
+            <span>{skill.label}</span>
+            <small>{skillSourceLabel(skill.source)} · {skill.category}</small>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ProfilePanel({
   agent,
   model,
   onModelChange,
+  prompt,
+  skills,
+  onSkillsChange,
+  onRecommendSkills,
 }: {
   agent: AgentDef;
   model: string;
   onModelChange: (id: AgentId, model: string) => void;
+  prompt: string;
+  skills: string[];
+  onSkillsChange: (id: AgentId, skills: string[]) => void;
+  onRecommendSkills: (id: AgentId) => void;
 }) {
   return (
     <aside className="profile-panel glass">
@@ -348,10 +473,13 @@ function ProfilePanel({
           ))}
         </select>
       </label>
-      <h3>스킬 묶음</h3>
-      <div className="skill-tags">
-        {agent.suggestedSkills.map((skill) => <span key={skill}>{skill}</span>)}
-      </div>
+      <SkillEditor
+        agent={agent}
+        prompt={prompt}
+        skills={skills}
+        onSkillsChange={onSkillsChange}
+        onRecommendSkills={onRecommendSkills}
+      />
       <h3>권한</h3>
       <div className="permission-list">
         {agent.permissions.map((permission) => <span key={permission}><ShieldCheck size={13} /> {permission}</span>)}
@@ -369,11 +497,13 @@ function CommandCenter({
   plan,
   setPrompt,
   runPlan,
+  applyRecommendedToAll,
 }: {
   prompt: string;
   plan: OfficePlan;
   setPrompt: (v: string) => void;
   runPlan: () => void;
+  applyRecommendedToAll: () => void;
 }) {
   return (
     <section className="command-center glass">
@@ -392,6 +522,7 @@ function CommandCenter({
       </div>
       <div className="command-actions">
         <button className="primary-btn" onClick={runPlan}><Play size={16} /> CEO에게 작업 분배</button>
+        <button className="ghost-btn" onClick={applyRecommendedToAll}><Wand2 size={16} /> 전 직원 추천 스킬 붙이기</button>
         <span className="safe-note"><Lock size={14} /> Telegram, 파일 쓰기, GitHub push는 승인 대기 흐름으로 표시</span>
       </div>
     </section>
@@ -411,6 +542,7 @@ function TaskBoard({ plan, selectAgent }: { plan: OfficePlan; selectAgent: (id: 
             <small>{task.brief}</small>
             <div className="task-progress"><i style={{ width: `${task.progress}%` }} /></div>
             <span className="task-model"><Cpu size={13} /> {modelLabel(task.model)}</span>
+            <span className="task-skills"><Zap size={13} /> {task.skills.slice(0, 4).join(' · ')}</span>
             <span className="task-output"><FileText size={13} /> {task.output}</span>
             <em>{taskStatusLabel[task.status]}</em>
           </button>
@@ -423,13 +555,17 @@ function TaskBoard({ plan, selectAgent }: { plan: OfficePlan; selectAgent: (id: 
 function ModelRoutingPanel({
   activeAgent,
   modelSettings,
+  skillSettings,
   selectAgent,
   onModelChange,
+  onRecommendSkills,
 }: {
   activeAgent: AgentId;
   modelSettings: ModelSettings;
+  skillSettings: SkillSettings;
   selectAgent: (id: AgentId) => void;
   onModelChange: (id: AgentId, model: string) => void;
+  onRecommendSkills: (id: AgentId) => void;
 }) {
   return (
     <section className="routing-panel glass">
@@ -446,7 +582,8 @@ function ModelRoutingPanel({
               <select value={modelSettings[id]} onChange={(event) => onModelChange(id, event.target.value)}>
                 {modelOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
               </select>
-              <small>{agent.suggestedSkills.join(' · ')}</small>
+              <small>{(skillSettings[id] || agent.suggestedSkills).slice(0, 4).join(' · ')}</small>
+              <button type="button" className="route-skill-btn" onClick={() => onRecommendSkills(id)}><Wand2 size={13} /> 추천</button>
             </div>
           );
         })}
@@ -537,12 +674,38 @@ export default function App() {
   const [prompt, setPrompt] = useState('이번 달 월수익 1천만 원을 목표로 유튜브 콘텐츠, 수익성 웹사이트, Telegram 보고 자동화를 같이 운영해줘.');
   const [seed, setSeed] = useState(0);
   const [modelSettings, setModelSettings] = useState<ModelSettings>(defaultModelSettings);
+  const [skillSettings, setSkillSettings] = useState<SkillSettings>(() => buildDefaultSkillSettings());
   const [approvalDecisions, setApprovalDecisions] = useState<Record<string, ApprovalStatus>>({});
-  const plan = useMemo(() => makePlan(prompt, seed, modelSettings), [modelSettings, prompt, seed]);
+  const plan = useMemo(() => makePlan(prompt, seed, modelSettings, skillSettings), [modelSettings, prompt, seed, skillSettings]);
   const selected = AGENTS[activeAgent];
+  const selectedSkills = skillSettings[activeAgent] || selected.suggestedSkills;
 
   const updateModel = (id: AgentId, model: string) => {
     setModelSettings((prev) => ({ ...prev, [id]: model }));
+  };
+
+  const updateSkills = (id: AgentId, skills: string[]) => {
+    setSkillSettings((prev) => ({ ...prev, [id]: normalizeSkillList(skills) }));
+  };
+
+  const applyRecommendedSkills = (id: AgentId) => {
+    setSkillSettings((prev) => {
+      const base = prev[id] || AGENTS[id].suggestedSkills;
+      const recommended = recommendSkillsForAgent(id, prompt, 6).map((skill) => skill.id);
+      return { ...prev, [id]: normalizeSkillList([...base, ...recommended]) };
+    });
+  };
+
+  const applyRecommendedToAll = () => {
+    setSkillSettings((prev) => {
+      const next: SkillSettings = { ...prev };
+      AGENT_ORDER.forEach((id) => {
+        const base = next[id] || AGENTS[id].suggestedSkills;
+        const recommended = recommendSkillsForAgent(id, prompt, 5).map((skill) => skill.id);
+        next[id] = normalizeSkillList([...base, ...recommended]);
+      });
+      return next;
+    });
   };
 
   const runPlan = () => {
@@ -569,12 +732,27 @@ export default function App() {
       <main className="layout">
         <div className="left-col">
           <Office activeAgent={activeAgent} plan={plan} selectAgent={setActiveAgent} />
-          <CommandCenter prompt={prompt} plan={plan} setPrompt={setPrompt} runPlan={runPlan} />
+          <CommandCenter prompt={prompt} plan={plan} setPrompt={setPrompt} runPlan={runPlan} applyRecommendedToAll={applyRecommendedToAll} />
           <TaskBoard plan={plan} selectAgent={setActiveAgent} />
         </div>
         <div className="right-col">
-          <ProfilePanel agent={selected} model={modelSettings[activeAgent]} onModelChange={updateModel} />
-          <ModelRoutingPanel activeAgent={activeAgent} modelSettings={modelSettings} selectAgent={setActiveAgent} onModelChange={updateModel} />
+          <ProfilePanel
+            agent={selected}
+            model={modelSettings[activeAgent]}
+            onModelChange={updateModel}
+            prompt={prompt}
+            skills={selectedSkills}
+            onSkillsChange={updateSkills}
+            onRecommendSkills={applyRecommendedSkills}
+          />
+          <ModelRoutingPanel
+            activeAgent={activeAgent}
+            modelSettings={modelSettings}
+            skillSettings={skillSettings}
+            selectAgent={setActiveAgent}
+            onModelChange={updateModel}
+            onRecommendSkills={applyRecommendedSkills}
+          />
           <ApprovalPanel approvals={plan.approvals} decisions={approvalDecisions} respondApproval={(id, status) => setApprovalDecisions((prev) => ({ ...prev, [id]: status }))} />
           <BrainPanel plan={plan} />
           <VideoPanel />

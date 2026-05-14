@@ -1,4 +1,5 @@
 import { AGENTS, AgentId, SPECIALIST_IDS } from './agents';
+import type { SkillSettings } from './skillCatalog';
 
 export type TaskStatus = 'queued' | 'running' | 'done' | 'approval';
 export type ReportKind = 'dispatch' | 'progress' | 'telegram' | 'approval' | 'artifact';
@@ -175,7 +176,12 @@ function makeTime(index: number, runId: number) {
   return `T+${String(runId * 3 + index + 1).padStart(2, '0')}m`;
 }
 
-export function makePlan(prompt = defaultPrompt, runId = 0, modelSettings: ModelSettings = defaultModelSettings): OfficePlan {
+export function makePlan(
+  prompt = defaultPrompt,
+  runId = 0,
+  modelSettings: ModelSettings = defaultModelSettings,
+  skillSettings: SkillSettings = {},
+): OfficePlan {
   const keyword = getKeyword(prompt);
   const statusSet = runStatuses[runId % runStatuses.length];
   const tasks = SPECIALIST_IDS.map((agent, index) => {
@@ -188,7 +194,7 @@ export function makePlan(prompt = defaultPrompt, runId = 0, modelSettings: Model
       status,
       progress: progressFor(status, index, runId),
       model: modelSettings[agent] || AGENTS[agent].defaultModel,
-      skills: AGENTS[agent].suggestedSkills,
+      skills: skillSettings[agent]?.length ? skillSettings[agent] : AGENTS[agent].suggestedSkills,
       approvalRequired: status === 'approval' || agent === 'secretary',
       brief: `${template.brief} 입력 목표: ${keyword}`,
     };
@@ -238,7 +244,7 @@ export function makePlan(prompt = defaultPrompt, runId = 0, modelSettings: Model
       agent: task.agent,
       kind: task.status === 'approval' ? 'approval' : task.status === 'done' ? 'artifact' : 'progress',
       time: makeTime(index + 1, runId),
-      text: `${AGENTS[task.agent].emoji} ${AGENTS[task.agent].name}: ${task.title} ${statusText[task.status]} ${task.progress}% · ${task.output}`,
+      text: `${AGENTS[task.agent].emoji} ${AGENTS[task.agent].name}: ${task.title} ${statusText[task.status]} ${task.progress}% · ${task.skills.slice(0, 3).join(', ')} 사용 · ${task.output}`,
     })),
     {
       agent: 'secretary',

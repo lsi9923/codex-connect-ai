@@ -1,7 +1,7 @@
 {
   "aiSlopCleaner": {
     "status": "passed",
-    "evidence": "Scoped scan of src, index.html, scripts, package.json, vite.config.ts, tsconfig.json, and .gitignore found no masking fallback/TODO/hack signals. The only console.log is the test success line in scripts/check-agents.mjs."
+    "evidence": "Scoped scan of src, index.html, scripts, package.json, vite.config.ts, tsconfig.json, and .gitignore found no masking fallback/TODO/hack signals. The only console.log is the test success line in scripts/check-agents.mjs. Follow-up pass also removed native agent title tooltips and verified inline skill editing."
   },
   "verification": {
     "status": "passed",
@@ -10,12 +10,12 @@
       "npm run build",
       "Invoke-WebRequest -UseBasicParsing -Uri http://127.0.0.1:5199/"
     ],
-    "evidence": "npm test passed, Vite production build passed, and the running dev server returned HTTP 200. Earlier Playwright smoke verified task distribution, model selection, approval buttons, and zero console errors after the favicon fix."
+    "evidence": "npm test passed, Vite production build passed, and the running dev server returned HTTP 200. Playwright smoke verified task distribution, model selection, approval buttons, desk terminals, skill editor, recommendation attach, direct custom skill add, no native title popups, and zero console errors."
   },
   "codeReview": {
     "recommendation": "APPROVE",
     "architectStatus": "CLEAR",
-    "evidence": "Reviewed App.tsx, agents.ts, simulator.ts, styles.css, index.html, and scripts/check-agents.mjs for safety, data flow, UI behavior, and maintainability. No blocking correctness, security, or architecture issues found."
+    "evidence": "Reviewed App.tsx, agents.ts, simulator.ts, skillCatalog.ts, styles.css, index.html, and scripts/check-agents.mjs for safety, data flow, UI behavior, and maintainability. No blocking correctness, security, or architecture issues found."
   },
   "ultragoalCheckpoint": {
     "status": "not_checkpointed",
